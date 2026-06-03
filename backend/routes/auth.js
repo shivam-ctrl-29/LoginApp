@@ -96,31 +96,28 @@ router.post('/login', async (req, res) => {
     }
 
     const isMatch = await bcrypt.compare(password, user.rows[0].password);
-    console.log('Password match:', isMatch);
-
     if (!isMatch) {
       return res.status(400).json({ message: 'Wrong password' });
     }
 
+    // Access token includes role ← important for Phase 7
     const accessToken = jwt.sign(
-      { id: user.rows[0].id },
+      { id: user.rows[0].id, role: user.rows[0].role },
       process.env.JWT_SECRET,
       { expiresIn: '15m' }
     );
-    console.log('Access token created');
 
+    // Refresh token
     const refreshToken = jwt.sign(
       { id: user.rows[0].id },
       process.env.REFRESH_SECRET,
       { expiresIn: '30d' }
     );
-    console.log('Refresh token created');
 
     await pool.query(
       'INSERT INTO refresh_tokens (user_id, token) VALUES ($1, $2)',
       [user.rows[0].id, refreshToken]
     );
-    console.log('Refresh token saved to DB');
 
     res.json({
       message: 'Login successful!',
