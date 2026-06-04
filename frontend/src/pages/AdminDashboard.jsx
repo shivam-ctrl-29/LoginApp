@@ -15,8 +15,8 @@ function AdminDashboard() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+  fetchUsers();
+}, [fetchUsers]);
 
   const fetchUsers = async () => {
     const token = localStorage.getItem('token');

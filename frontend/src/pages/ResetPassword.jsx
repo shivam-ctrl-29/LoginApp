@@ -6,6 +6,7 @@ function ResetPassword() {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  // eslint-disable-next-line
   const { token } = useParams();
   const navigate = useNavigate();
 
