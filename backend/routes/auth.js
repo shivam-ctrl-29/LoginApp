@@ -38,7 +38,7 @@ router.post('/signup', async (req, res) => {
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await pool.query(
-     'INSERT INTO refresh_tokens (user_id, token) VALUES ($1, $2)',
+     'INSERT INTO refresh_tokens ("userId", token) VALUES ($1, $2)',
      [user.id, refreshToken]
      );
     const verifyLink = `${FRONTEND_URL}/verify-email/${token}`;
@@ -72,7 +72,7 @@ router.get('/verify-email/:token', async (req, res) => {
       await pool.query('DELETE FROM password_reset WHERE token = $1', [token]);
       return res.status(400).json({ message: 'Link expired. Please register again.' });
     }
-    const userId = entry.userId || entry.user_id;
+    const userId = entry.userId || entry."userId";
     await pool.query('UPDATE users SET verified = TRUE WHERE id = $1', [userId]);
     await pool.query('DELETE FROM password_reset WHERE token = $1', [token]);
     res.json({ message: 'Email verified successfully! You can now login.' });
@@ -111,7 +111,7 @@ router.post('/login', async (req, res) => {
       { expiresIn: '30d' }
     );
     await pool.query(
-      'INSERT INTO refresh_tokens ("user_id", token) VALUES ($1, $2)',
+      'INSERT INTO refresh_tokens (""userId"", token) VALUES ($1, $2)',
       [user.id, refreshToken]
     );
     res.json({ message: 'Login successful!', accessToken, refreshToken });
