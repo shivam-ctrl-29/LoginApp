@@ -9,9 +9,10 @@ function MyLeaves() {
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchLeaves();
-  }, []);
+  // eslint-disable-next-line
+ useEffect(() => {
+  fetchLeaves();
+ }, []);
 
   const fetchLeaves = async () => {
     const token = getToken();

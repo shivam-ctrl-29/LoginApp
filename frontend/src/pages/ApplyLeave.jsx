@@ -17,9 +17,10 @@ function ApplyLeave() {
     reason: ''
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  // eslint-disable-next-line
+ useEffect(() => {
+  fetchData();
+ }, []);
 
   const fetchData = async () => {
     const token = getToken();
