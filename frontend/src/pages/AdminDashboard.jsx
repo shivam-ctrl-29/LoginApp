@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../redux/slices/authSlice';
@@ -14,11 +14,7 @@ function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
 
-  useEffect(() => {
-  fetchUsers();
-}, [fetchUsers]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     const token = localStorage.getItem('token');
     try {
       const res = await axios.get(`${API_URL}/api/admin/users`, {
@@ -35,7 +31,11 @@ function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleDelete = async (id) => {
     const token = localStorage.getItem('token');
