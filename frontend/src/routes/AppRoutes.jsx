@@ -9,6 +9,9 @@ import ResetPassword from '../pages/ResetPassword';
 import VerifyEmail from '../pages/VerifyEmail';
 import EmployeeList from '../pages/EmployeeList';
 import CreateEmployee from '../pages/CreateEmployee';
+import ApplyLeave from '../pages/ApplyLeave';
+import MyLeaves from '../pages/MyLeaves';
+import LeaveApproval from '../pages/LeaveApproval';
 import ProtectedRoute from './ProtectedRoute';
 
 function AppRoutes() {
@@ -23,6 +26,9 @@ function AppRoutes() {
       <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
       <Route path="/employees" element={<ProtectedRoute><EmployeeList /></ProtectedRoute>} />
       <Route path="/employees/create" element={<ProtectedRoute><CreateEmployee /></ProtectedRoute>} />
+      <Route path="/leave/apply" element={<ProtectedRoute><ApplyLeave /></ProtectedRoute>} />
+      <Route path="/leave/my" element={<ProtectedRoute><MyLeaves /></ProtectedRoute>} />
+      <Route path="/leave/approval" element={<ProtectedRoute><LeaveApproval /></ProtectedRoute>} />
     </Routes>
   );
 }

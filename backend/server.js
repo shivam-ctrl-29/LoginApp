@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
@@ -10,8 +12,19 @@ const adminRoutes = require('./routes/admin');
 const departmentRoutes = require('./routes/departments');
 const skillRoutes = require('./routes/skills');
 const employeeRoutes = require('./routes/employees');
+const leaveRoutes = require('./routes/leave');
 
 const app = express();
+
+// Security
+app.use(helmet());
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100
+});
+app.use(limiter);
 
 app.use(cors({
   origin: '*',
@@ -20,8 +33,6 @@ app.use(cors({
 }));
 
 app.use(express.json());
-
-// Serve uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/auth', authRoutes);
@@ -31,6 +42,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/skills', skillRoutes);
 app.use('/api/employees', employeeRoutes);
+app.use('/api/leave', leaveRoutes);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

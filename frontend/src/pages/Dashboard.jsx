@@ -11,6 +11,7 @@ function Dashboard() {
   const dispatch = useDispatch();
   const { user, loading, error } = useSelector(state => state.auth);
   const [stats, setStats] = useState({});
+  const [leaveStats, setLeaveStats] = useState({});
 
   useEffect(() => {
     if (!user) dispatch(fetchUser());
@@ -24,10 +25,16 @@ function Dashboard() {
     const fetchStats = async () => {
       const token = localStorage.getItem('token');
       try {
-        const res = await axios.get(`${API_URL}/api/employees/stats/dashboard`, {
-          headers: { Authorization: token }
-        });
-        setStats(res.data);
+        const [empStats, lvStats] = await Promise.all([
+          axios.get(`${API_URL}/api/employees/stats/dashboard`, {
+            headers: { Authorization: token }
+          }),
+          axios.get(`${API_URL}/api/leave/stats`, {
+            headers: { Authorization: token }
+          })
+        ]);
+        setStats(empStats.data);
+        setLeaveStats(lvStats.data);
       } catch (err) {
         console.error(err);
       }
@@ -49,6 +56,8 @@ function Dashboard() {
   if (loading || !user) {
     return <div style={styles.container}><p>Loading...</p></div>;
   }
+
+  const canApprove = ['admin', 'hr', 'manager'].includes(user?.role);
 
   return (
     <div style={styles.container}>
@@ -75,7 +84,8 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* Employee Stats */}
+        <p style={styles.sectionTitle}>📊 Company Stats</p>
         <div style={styles.statsGrid}>
           <div style={styles.statCard} onClick={() => navigate('/employees')}>
             <h3 style={styles.statNumber}>{stats.totalEmployees || 0}</h3>
@@ -95,19 +105,49 @@ function Dashboard() {
           </div>
         </div>
 
-        <button
-          style={styles.employeeBtn}
-          onClick={() => navigate('/employees')}
-        >
+        {/* Leave Stats */}
+        <p style={styles.sectionTitle}>📋 Leave Stats</p>
+        <div style={styles.statsGrid}>
+          <div style={styles.statCard}>
+            <h3 style={{...styles.statNumber, color: '#FF9800'}}>{leaveStats.pending || 0}</h3>
+            <p style={styles.statLabel}>⏳ Pending</p>
+          </div>
+          <div style={styles.statCard}>
+            <h3 style={{...styles.statNumber, color: '#4CAF50'}}>{leaveStats.approved || 0}</h3>
+            <p style={styles.statLabel}>✅ Approved</p>
+          </div>
+          <div style={styles.statCard}>
+            <h3 style={{...styles.statNumber, color: '#f44336'}}>{leaveStats.rejected || 0}</h3>
+            <p style={styles.statLabel}>❌ Rejected</p>
+          </div>
+          <div style={styles.statCard}>
+            <h3 style={{...styles.statNumber, color: '#2196F3'}}>{leaveStats.total || 0}</h3>
+            <p style={styles.statLabel}>📋 Total</p>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <button style={styles.employeeBtn} onClick={() => navigate('/employees')}>
           👥 View Employees
         </button>
 
+        <button style={styles.leaveBtn} onClick={() => navigate('/leave/apply')}>
+          📝 Apply Leave
+        </button>
+
+        <button style={styles.myLeaveBtn} onClick={() => navigate('/leave/my')}>
+          📋 My Leaves
+        </button>
+
+        {canApprove && (
+          <button style={styles.approvalBtn} onClick={() => navigate('/leave/approval')}>
+            ✅ Leave Approvals
+          </button>
+        )}
+
         {user?.role === 'admin' && (
-          <button
-            style={styles.adminButton}
-            onClick={() => navigate('/admin')}
-          >
-            👑 Go to Admin Panel
+          <button style={styles.adminButton} onClick={() => navigate('/admin')}>
+            👑 Admin Panel
           </button>
         )}
 
@@ -129,12 +169,12 @@ const styles = {
     backgroundColor: 'white', padding: '40px',
     borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
     display: 'flex', flexDirection: 'column',
-    width: '400px', alignItems: 'center'
+    width: '420px', alignItems: 'center'
   },
   avatar: {
-    width: '70px', height: '70px',
-    borderRadius: '50%', backgroundColor: '#2196F3',
-    color: 'white', fontSize: '30px', fontWeight: 'bold',
+    width: '70px', height: '70px', borderRadius: '50%',
+    backgroundColor: '#2196F3', color: 'white',
+    fontSize: '30px', fontWeight: 'bold',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     marginBottom: '15px'
   },
@@ -149,31 +189,49 @@ const styles = {
   },
   label: { color: '#666', fontSize: '14px' },
   value: { color: '#333', fontSize: '14px', fontWeight: 'bold' },
+  sectionTitle: {
+    alignSelf: 'flex-start', color: '#666',
+    fontSize: '13px', marginBottom: '8px', marginTop: '5px'
+  },
   statsGrid: {
     display: 'grid', gridTemplateColumns: '1fr 1fr',
-    gap: '10px', width: '100%', marginBottom: '20px'
+    gap: '10px', width: '100%', marginBottom: '15px'
   },
   statCard: {
     backgroundColor: '#f0f2f5', borderRadius: '8px',
-    padding: '15px', textAlign: 'center', cursor: 'pointer'
+    padding: '12px', textAlign: 'center', cursor: 'pointer'
   },
-  statNumber: { color: '#2196F3', fontSize: '24px', margin: '0 0 5px 0' },
-  statLabel: { color: '#666', fontSize: '12px', margin: 0 },
+  statNumber: { color: '#2196F3', fontSize: '22px', margin: '0 0 5px 0' },
+  statLabel: { color: '#666', fontSize: '11px', margin: 0 },
   employeeBtn: {
     width: '100%', padding: '10px', backgroundColor: '#4CAF50',
     color: 'white', border: 'none', borderRadius: '5px',
-    fontSize: '16px', cursor: 'pointer', marginBottom: '10px'
+    fontSize: '14px', cursor: 'pointer', marginBottom: '8px'
+  },
+  leaveBtn: {
+    width: '100%', padding: '10px', backgroundColor: '#9C27B0',
+    color: 'white', border: 'none', borderRadius: '5px',
+    fontSize: '14px', cursor: 'pointer', marginBottom: '8px'
+  },
+  myLeaveBtn: {
+    width: '100%', padding: '10px', backgroundColor: '#00BCD4',
+    color: 'white', border: 'none', borderRadius: '5px',
+    fontSize: '14px', cursor: 'pointer', marginBottom: '8px'
+  },
+  approvalBtn: {
+    width: '100%', padding: '10px', backgroundColor: '#FF9800',
+    color: 'white', border: 'none', borderRadius: '5px',
+    fontSize: '14px', cursor: 'pointer', marginBottom: '8px'
   },
   adminButton: {
-    padding: '10px 30px', backgroundColor: '#2196F3',
+    width: '100%', padding: '10px', backgroundColor: '#2196F3',
     color: 'white', border: 'none', borderRadius: '5px',
-    fontSize: '16px', cursor: 'pointer',
-    width: '100%', marginBottom: '10px'
+    fontSize: '14px', cursor: 'pointer', marginBottom: '8px'
   },
   button: {
-    padding: '10px 30px', backgroundColor: '#f44336',
+    width: '100%', padding: '10px', backgroundColor: '#f44336',
     color: 'white', border: 'none', borderRadius: '5px',
-    fontSize: '16px', cursor: 'pointer', width: '100%'
+    fontSize: '14px', cursor: 'pointer'
   }
 };
 
