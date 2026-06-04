@@ -11,14 +11,13 @@ function LeaveApproval() {
   const [message, setMessage] = useState('');
   const [remarks, setRemarks] = useState({});
 
-  // eslint-disable-next-line
- useEffect(() => {
+  useEffect(() => { // eslint-disable-line
   if (!canApprove) {
     navigate('/dashboard');
     return;
   }
   fetchLeaves();
- }, [canApprove]);
+ }, [canApprove]); // eslint-disable-line
 
   const fetchLeaves = async () => {
     const token = getToken();

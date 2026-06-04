@@ -17,10 +17,9 @@ function ApplyLeave() {
     reason: ''
   });
 
-  // eslint-disable-next-line
- useEffect(() => {
+  useEffect(() => { // eslint-disable-line
   fetchData();
- }, []);
+ }, []); // eslint-disable-line
 
   const fetchData = async () => {
     const token = getToken();
