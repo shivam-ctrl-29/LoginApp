@@ -1,69 +1,62 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../config/db');
+const prisma = require('../config/prisma');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+const sendEmail = async (to, subject, html) => {
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    }
+  });
+  await transporter.sendMail({ from: process.env.EMAIL_USER, to, subject, html });
+};
+
 // FORGOT PASSWORD
 router.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
-
   try {
-    // Check if user exists
-    const user = await pool.query(
-      'SELECT * FROM users WHERE email = $1', [email]
-    );
+    const user = await prisma.user.findUnique({ where: { email } });
 
-    if (user.rows.length === 0) {
+    if (!user) {
       return res.status(404).json({ message: 'Email not found' });
     }
 
-    // Generate reset token
     const token = crypto.randomBytes(32).toString('hex');
-
-    // Set expiry to 15 minutes from now
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-    // Delete any old tokens for this user
-    await pool.query(
-      'DELETE FROM password_reset WHERE user_id = $1',
-      [user.rows[0].id]
-    );
+    // Delete old tokens for this user
+    await prisma.passwordReset.deleteMany({
+      where: { userId: user.id }
+    });
 
     // Save new token
-    await pool.query(
-      'INSERT INTO password_reset (user_id, token, expires_at) VALUES ($1, $2, $3)',
-      [user.rows[0].id, token, expiresAt]
-    );
-
-    // Send email
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
+    await prisma.passwordReset.create({
+      data: { userId: user.id, token, expiresAt }
     });
 
-    const resetLink = `http://localhost:3000/reset-password/${token}`;
+    const resetLink = `${FRONTEND_URL}/reset-password/${token}`;
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'Password Reset Request',
-      html: `
-        <h2>Password Reset</h2>
-        <p>Click the link below to reset your password.</p>
-        <p>This link expires in 15 minutes.</p>
-        <a href="${resetLink}">Reset Password</a>
-      `
-    });
+    await sendEmail(email, 'Password Reset Request', `
+      <h2>Password Reset</h2>
+      <p>Click the link below to reset your password.</p>
+      <p>This link expires in 15 minutes.</p>
+      <a href="${resetLink}" style="background:#2196F3;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;">
+        Reset Password
+      </a>
+    `);
 
     res.json({ message: 'Reset link sent to your email!' });
 
   } catch (err) {
+    console.error('FORGOT PASSWORD ERROR:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
@@ -74,42 +67,32 @@ router.post('/reset-password/:token', async (req, res) => {
   const { password } = req.body;
 
   try {
-    // Find token in database
-    const result = await pool.query(
-      'SELECT * FROM password_reset WHERE token = $1', [token]
-    );
+    const entry = await prisma.passwordReset.findFirst({
+      where: { token }
+    });
 
-    if (result.rows.length === 0) {
+    if (!entry) {
       return res.status(400).json({ message: 'Invalid or expired token' });
     }
 
-    const resetEntry = result.rows[0];
-
-    // Check if token is expired
-    if (new Date() > new Date(resetEntry.expires_at)) {
-      await pool.query(
-        'DELETE FROM password_reset WHERE token = $1', [token]
-      );
+    if (new Date() > new Date(entry.expiresAt)) {
+      await prisma.passwordReset.delete({ where: { id: entry.id } });
       return res.status(400).json({ message: 'Token expired. Please request again.' });
     }
 
-    // Encrypt new password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Update password in users table
-    await pool.query(
-      'UPDATE users SET password = $1 WHERE id = $2',
-      [hashedPassword, resetEntry.user_id]
-    );
+    await prisma.user.update({
+      where: { id: entry.userId },
+      data: { password: hashedPassword }
+    });
 
-    // Delete used token
-    await pool.query(
-      'DELETE FROM password_reset WHERE token = $1', [token]
-    );
+    await prisma.passwordReset.delete({ where: { id: entry.id } });
 
     res.json({ message: 'Password reset successful! Please login.' });
 
   } catch (err) {
+    console.error('RESET PASSWORD ERROR:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });

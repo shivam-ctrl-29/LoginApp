@@ -1,11 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../config/db');
+const prisma = require('../config/prisma');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 require('dotenv').config();
+
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 // Email sender helper
 const sendEmail = async (to, subject, html) => {
@@ -23,24 +25,20 @@ const sendEmail = async (to, subject, html) => {
 router.post('/signup', async (req, res) => {
   const { name, email, password } = req.body;
   try {
-    const userExists = await pool.query(
-      'SELECT * FROM users WHERE email = $1', [email]
-    );
-    if (userExists.rows.length > 0) {
+    const userExists = await prisma.user.findUnique({ where: { email } });
+    if (userExists) {
       return res.status(400).json({ message: 'Email already registered' });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = await pool.query(
-      'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id',
-      [name, email, hashedPassword]
-    );
+    const newUser = await prisma.user.create({
+      data: { name, email, password: hashedPassword }
+    });
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    await pool.query(
-      'INSERT INTO password_reset (user_id, token, expires_at) VALUES ($1, $2, $3)',
-      [newUser.rows[0].id, token, expiresAt]
-    );
-    const verifyLink = `http://localhost:3000/verify-email/${token}`;
+    await prisma.passwordReset.create({
+      data: { userId: newUser.id, token, expiresAt }
+    });
+    const verifyLink = `${FRONTEND_URL}/verify-email/${token}`;
     await sendEmail(email, 'Verify Your Email', `
       <h2>Welcome ${name}!</h2>
       <p>Please verify your email by clicking the link below.</p>
@@ -59,19 +57,19 @@ router.post('/signup', async (req, res) => {
 router.get('/verify-email/:token', async (req, res) => {
   const { token } = req.params;
   try {
-    const result = await pool.query(
-      'SELECT * FROM password_reset WHERE token = $1', [token]
-    );
-    if (result.rows.length === 0) {
+    const entry = await prisma.passwordReset.findFirst({ where: { token } });
+    if (!entry) {
       return res.status(400).json({ message: 'Invalid or expired link' });
     }
-    const entry = result.rows[0];
-    if (new Date() > new Date(entry.expires_at)) {
-      await pool.query('DELETE FROM password_reset WHERE token = $1', [token]);
+    if (new Date() > new Date(entry.expiresAt)) {
+      await prisma.passwordReset.delete({ where: { id: entry.id } });
       return res.status(400).json({ message: 'Link expired. Please register again.' });
     }
-    await pool.query('UPDATE users SET verified = TRUE WHERE id = $1', [entry.user_id]);
-    await pool.query('DELETE FROM password_reset WHERE token = $1', [token]);
+    await prisma.user.update({
+      where: { id: entry.userId },
+      data: { verified: true }
+    });
+    await prisma.passwordReset.delete({ where: { id: entry.id } });
     res.json({ message: 'Email verified successfully! You can now login.' });
   } catch (err) {
     console.error('VERIFY ERROR:', err.message);
@@ -83,48 +81,31 @@ router.get('/verify-email/:token', async (req, res) => {
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   try {
-    console.log('Login attempt for:', email);
-
-    const user = await pool.query(
-      'SELECT * FROM users WHERE email = $1', [email]
-    );
-    if (user.rows.length === 0) {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
       return res.status(400).json({ message: 'User not found' });
     }
-    if (!user.rows[0].verified) {
+    if (!user.verified) {
       return res.status(400).json({ message: 'Please verify your email before logging in!' });
     }
-
-    const isMatch = await bcrypt.compare(password, user.rows[0].password);
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Wrong password' });
     }
-
-    // Access token includes role ← important for Phase 7
     const accessToken = jwt.sign(
-      { id: user.rows[0].id, role: user.rows[0].role },
+      { id: user.id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '15m' }
     );
-
-    // Refresh token
     const refreshToken = jwt.sign(
-      { id: user.rows[0].id },
+      { id: user.id },
       process.env.REFRESH_SECRET,
       { expiresIn: '30d' }
     );
-
-    await pool.query(
-      'INSERT INTO refresh_tokens (user_id, token) VALUES ($1, $2)',
-      [user.rows[0].id, refreshToken]
-    );
-
-    res.json({
-      message: 'Login successful!',
-      accessToken,
-      refreshToken
+    await prisma.refreshToken.create({
+      data: { userId: user.id, token: refreshToken }
     });
-
+    res.json({ message: 'Login successful!', accessToken, refreshToken });
   } catch (error) {
     console.error('LOGIN ERROR:', error.message);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -138,10 +119,10 @@ router.post('/refresh-token', async (req, res) => {
     return res.status(401).json({ message: 'No refresh token' });
   }
   try {
-    const result = await pool.query(
-      'SELECT * FROM refresh_tokens WHERE token = $1', [refreshToken]
-    );
-    if (result.rows.length === 0) {
+    const stored = await prisma.refreshToken.findFirst({
+      where: { token: refreshToken }
+    });
+    if (!stored) {
       return res.status(403).json({ message: 'Invalid refresh token' });
     }
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_SECRET);
@@ -161,9 +142,7 @@ router.post('/refresh-token', async (req, res) => {
 router.post('/logout', async (req, res) => {
   const { refreshToken } = req.body;
   try {
-    await pool.query(
-      'DELETE FROM refresh_tokens WHERE token = $1', [refreshToken]
-    );
+    await prisma.refreshToken.deleteMany({ where: { token: refreshToken } });
     res.json({ message: 'Logged out successfully!' });
   } catch (err) {
     console.error('LOGOUT ERROR:', err.message);
