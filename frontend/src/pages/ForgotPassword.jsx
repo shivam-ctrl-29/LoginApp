@@ -11,7 +11,7 @@ function ForgotPassword() {
   const handleSubmit = async () => {
     try {
       const res = await axios.post(
-        'https://loginapp-backend.onrender.com/api/auth/forgot-password',
+        'https://shivamloginapp-backend.onrender.com/api/auth/forgot-password',
         { email }
       );
       setMessage(res.data.message);

@@ -7,7 +7,7 @@ export const fetchUser = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await axios.get('https://loginapp-backend.onrender.com/api/user/profile', {
+      const res = await axios.get('https://shivamloginapp-backend.onrender.com/api/user/profile', {
         headers: { Authorization: token }
       });
       return res.data;

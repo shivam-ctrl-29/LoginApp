@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../redux/slices/authSlice';
 import axios from 'axios';
 
-const API_URL = 'https://loginapp-backend.onrender.com';
+const API_URL = 'https://shivamloginapp-backend.onrender.com';
 
 function AdminDashboard() {
   const navigate = useNavigate();

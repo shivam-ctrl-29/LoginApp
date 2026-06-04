@@ -11,7 +11,7 @@ function Signup() {
 
   const handleSignup = async () => {
     try {
-      const res = await axios.post('https://loginapp-backend.onrender.com/api/auth/signup', {
+      const res = await axios.post('https://shivamloginapp-backend.onrender.com/api/auth/signup', {
         name, email, password
       });
       setMessage(res.data.message);

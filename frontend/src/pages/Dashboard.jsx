@@ -24,7 +24,7 @@ function Dashboard() {
   const handleLogout = async () => {
     const refreshToken = localStorage.getItem('refreshToken');
     try {
-      await axios.post('https://loginapp-backend.onrender.com/api/auth/logout', { refreshToken });
+      await axios.post('https://shivamloginapp-backend.onrender.com/api/auth/logout', { refreshToken });
     } catch (err) {
       console.log('Logout error:', err);
     }

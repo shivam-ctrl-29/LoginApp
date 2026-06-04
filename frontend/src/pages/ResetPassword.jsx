@@ -13,7 +13,7 @@ function ResetPassword() {
   const handleReset = async () => {
     try {
       const res = await axios.post(
-        `https://loginapp-backend.onrender.com/api/auth/reset-password`,
+        `https://shivamloginapp-backend.onrender.com/api/auth/reset-password`,
         { password }
       );
       setMessage(res.data.message);
