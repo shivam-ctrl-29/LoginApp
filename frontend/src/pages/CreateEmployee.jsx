@@ -1,33 +1,40 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-
-const API_URL = 'http://localhost:4000';
+import { Save, Upload, X, Check } from 'lucide-react';
+import AppLayout from '../components/layout/AppLayout';
+import PageHeader from '../components/ui/PageHeader';
+import GlassCard from '../components/ui/GlassCard';
+import { FloatingInput, FloatingSelect } from '../components/ui/FloatingInput';
+import Button from '../components/ui/Button';
+import { useToast } from '../context/ToastContext';
+import { useTheme } from '../theme/ThemeContext';
+import API_URL from '../config/api';
 
 function CreateEmployee() {
   const navigate = useNavigate();
+  const toast = useToast();
+  const { theme } = useTheme();
   const [departments, setDepartments] = useState([]);
   const [skills, setSkills] = useState([]);
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [images, setImages] = useState([]);
-  const [message, setMessage] = useState('');
+  const [previews, setPreviews] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     department_id: '',
     phone: '',
     address: '',
     designation: '',
-    salary: ''
+    salary: '',
   });
 
   useEffect(() => {
-  axios.get(`${API_URL}/api/departments`)
-    .then(res => setDepartments(res.data))
-    .catch(err => console.error('Departments error:', err));
+    axios.get(`${API_URL}/api/departments`).then(res => setDepartments(res.data)).catch(console.error);
+    axios.get(`${API_URL}/api/skills`).then(res => setSkills(res.data)).catch(console.error);
+  }, []);
 
-  axios.get(`${API_URL}/api/skills`)
-    .then(res => setSkills(res.data))
-    .catch(err => console.error('Skills error:', err));
- }, []);
+  const updateForm = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
 
   const handleSkillToggle = (id) => {
     setSelectedSkills(prev =>
@@ -35,135 +42,218 @@ function CreateEmployee() {
     );
   };
 
-  const handleSubmit = async () => {
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files).slice(0, 5);
+    setImages(files);
+    setPreviews(files.map(f => URL.createObjectURL(f)));
+  };
+
+  const removeImage = (idx) => {
+    setImages(prev => prev.filter((_, i) => i !== idx));
+    setPreviews(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSubmit = async (e) => {
+    e?.preventDefault();
+    if (!form.department_id) {
+      toast.warning('Please select a department');
+      return;
+    }
+    setLoading(true);
     const token = localStorage.getItem('token');
     try {
       const res = await axios.post(`${API_URL}/api/employees`, {
         ...form,
-        skill_ids: selectedSkills
+        skill_ids: selectedSkills,
       }, { headers: { Authorization: token } });
 
       const employeeId = res.data.employee.id;
 
-      // Upload images if any
       if (images.length > 0) {
         const formData = new FormData();
-        for (const img of images) formData.append('images', img);
+        images.forEach(img => formData.append('images', img));
         await axios.post(`${API_URL}/api/employees/upload/${employeeId}`, formData, {
-          headers: { Authorization: token, 'Content-Type': 'multipart/form-data' }
+          headers: { Authorization: token, 'Content-Type': 'multipart/form-data' },
         });
       }
 
-      setMessage('Employee created successfully!');
-      setTimeout(() => navigate('/employees'), 1500);
+      toast.success('Employee created successfully!');
+      setTimeout(() => navigate('/employees'), 800);
     } catch (err) {
-      setMessage(err.response?.data?.message || 'Something went wrong');
+      toast.error(err.response?.data?.message || 'Failed to create employee');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.box}>
-        <h2 style={styles.title}>➕ Create Employee</h2>
+    <AppLayout>
+      <PageHeader
+        title="Create Employee"
+        subtitle="Add a new team member to your organization"
+      />
 
-        <select
-          style={styles.input}
-          onChange={e => setForm({...form, department_id: e.target.value})}
-        >
-          <option value="">Select Department</option>
-          {departments.map(d => (
-            <option key={d.id} value={d.id}>{d.department_name}</option>
-          ))}
-        </select>
+      <GlassCard style={{ padding: 32, maxWidth: 640 }}>
+        <form onSubmit={handleSubmit}>
+          <FloatingSelect
+            label="Department"
+            value={form.department_id}
+            onChange={e => updateForm('department_id', e.target.value)}
+            required
+          >
+            <option value="">Select Department</option>
+            {departments.map(d => (
+              <option key={d.id} value={d.id}>{d.department_name}</option>
+            ))}
+          </FloatingSelect>
 
-        <input style={styles.input} placeholder="Phone"
-          onChange={e => setForm({...form, phone: e.target.value})} />
+          <FloatingInput
+            label="Phone Number"
+            value={form.phone}
+            onChange={e => updateForm('phone', e.target.value)}
+          />
+          <FloatingInput
+            label="Address"
+            value={form.address}
+            onChange={e => updateForm('address', e.target.value)}
+          />
+          <FloatingInput
+            label="Designation"
+            value={form.designation}
+            onChange={e => updateForm('designation', e.target.value)}
+            required
+          />
+          <FloatingInput
+            label="Salary (₹)"
+            type="number"
+            value={form.salary}
+            onChange={e => updateForm('salary', e.target.value)}
+            required
+          />
 
-        <input style={styles.input} placeholder="Address"
-          onChange={e => setForm({...form, address: e.target.value})} />
+          {/* Skills */}
+          <div style={{ marginBottom: 24 }}>
+            <label style={{
+              display: 'block',
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              color: theme.colors.textMuted,
+              marginBottom: 12,
+            }}>
+              Skills
+            </label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {skills.map(s => {
+                const selected = selectedSkills.includes(s.id);
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => handleSkillToggle(s.id)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '8px 16px',
+                      borderRadius: 20,
+                      border: `1.5px solid ${selected ? theme.colors.accent : theme.colors.border}`,
+                      background: selected ? `${theme.colors.accent}18` : 'transparent',
+                      color: selected ? theme.colors.accent : theme.colors.text,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {selected && <Check size={14} />}
+                    {s.skill_name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-        <input style={styles.input} placeholder="Designation"
-          onChange={e => setForm({...form, designation: e.target.value})} />
+          {/* Image upload */}
+          <div style={{ marginBottom: 28 }}>
+            <label style={{
+              display: 'block',
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              color: theme.colors.textMuted,
+              marginBottom: 12,
+            }}>
+              Profile Images (max 5)
+            </label>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              padding: 24,
+              borderRadius: 12,
+              border: `2px dashed ${theme.colors.border}`,
+              cursor: 'pointer',
+              color: theme.colors.textSecondary,
+              fontSize: 14,
+              transition: 'border-color 0.2s',
+            }}>
+              <Upload size={20} />
+              Click to upload images
+              <input type="file" multiple accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
+            </label>
+            {previews.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 16 }}>
+                {previews.map((src, i) => (
+                  <div key={i} style={{ position: 'relative' }}>
+                    <img
+                      src={src}
+                      alt={`Preview ${i + 1}`}
+                      style={{ width: 72, height: 72, borderRadius: 12, objectFit: 'cover', border: `2px solid ${theme.colors.border}` }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(i)}
+                      style={{
+                        position: 'absolute',
+                        top: -6,
+                        right: -6,
+                        width: 22,
+                        height: 22,
+                        borderRadius: '50%',
+                        background: theme.colors.danger,
+                        border: 'none',
+                        color: '#fff',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
-        <input style={styles.input} placeholder="Salary" type="number"
-          onChange={e => setForm({...form, salary: e.target.value})} />
-
-        <p style={styles.label}>🎯 Select Skills:</p>
-        <div style={styles.skillsContainer}>
-          {skills.map(s => (
-            <button
-              key={s.id}
-              style={{
-                ...styles.skillBtn,
-                backgroundColor: selectedSkills.includes(s.id) ? '#4CAF50' : '#eee',
-                color: selectedSkills.includes(s.id) ? 'white' : '#333'
-              }}
-              onClick={() => handleSkillToggle(s.id)}
-            >
-              {s.skill_name}
-            </button>
-          ))}
-        </div>
-
-        <p style={styles.label}>📸 Upload Images (max 5):</p>
-        <input
-          type="file"
-          multiple
-          accept="image/*"
-          style={styles.input}
-          onChange={e => setImages(Array.from(e.target.files))}
-        />
-
-        <button style={styles.button} onClick={handleSubmit}>
-          Create Employee
-        </button>
-
-        {message && <p style={styles.message}>{message}</p>}
-
-        <button style={styles.backBtn} onClick={() => navigate('/employees')}>
-          ← Back to List
-        </button>
-      </div>
-    </div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <Button variant="ghost" onClick={() => navigate('/employees')} fullWidth>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" icon={Save} disabled={loading} fullWidth>
+              {loading ? 'Creating...' : 'Create Employee'}
+            </Button>
+          </div>
+        </form>
+      </GlassCard>
+    </AppLayout>
   );
 }
-
-const styles = {
-  container: {
-    display: 'flex', justifyContent: 'center',
-    alignItems: 'center', minHeight: '100vh',
-    backgroundColor: '#f0f2f5', padding: '20px'
-  },
-  box: {
-    backgroundColor: 'white', padding: '40px',
-    borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-    width: '100%', maxWidth: '500px'
-  },
-  title: { textAlign: 'center', color: '#333', marginBottom: '20px' },
-  label: { color: '#666', fontSize: '14px', marginBottom: '8px' },
-  input: {
-    width: '100%', padding: '10px', marginBottom: '15px',
-    borderRadius: '5px', border: '1px solid #ddd',
-    fontSize: '14px', boxSizing: 'border-box'
-  },
-  skillsContainer: {
-    display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '15px'
-  },
-  skillBtn: {
-    padding: '6px 14px', borderRadius: '20px',
-    border: 'none', cursor: 'pointer', fontSize: '13px'
-  },
-  button: {
-    width: '100%', padding: '10px', backgroundColor: '#4CAF50',
-    color: 'white', border: 'none', borderRadius: '5px',
-    fontSize: '16px', cursor: 'pointer', marginBottom: '10px'
-  },
-  backBtn: {
-    width: '100%', padding: '10px', backgroundColor: '#2196F3',
-    color: 'white', border: 'none', borderRadius: '5px',
-    fontSize: '14px', cursor: 'pointer'
-  },
-  message: { textAlign: 'center', color: '#4CAF50', marginTop: '10px' }
-};
 
 export default CreateEmployee;

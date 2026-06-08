@@ -1,149 +1,147 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-
-const API_URL = 'http://localhost:4000';
+import { UserPlus, Pencil, Trash2 } from 'lucide-react';
+import AppLayout from '../components/layout/AppLayout';
+import PageHeader from '../components/ui/PageHeader';
+import DataTable from '../components/ui/DataTable';
+import Badge from '../components/ui/Badge';
+import Button from '../components/ui/Button';
+import Avatar from '../components/ui/Avatar';
+import ConfirmModal from '../components/ui/ConfirmModal';
+import { TableSkeleton } from '../components/ui/Skeleton';
+import { useToast } from '../context/ToastContext';
+import API_URL from '../config/api';
 
 function EmployeeList() {
   const navigate = useNavigate();
+  const toast = useToast();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deleteId, setDeleteId] = useState(null);
 
-  useEffect(() => {
+  useEffect(() => { // eslint-disable-line
     fetchEmployees();
-  }, []);
+  }, []); // eslint-disable-line
 
   const fetchEmployees = async () => {
     const token = localStorage.getItem('token');
     try {
       const res = await axios.get(`${API_URL}/api/employees`, {
-        headers: { Authorization: token }
+        headers: { Authorization: token },
       });
       setEmployees(res.data);
     } catch (err) {
-      console.error(err);
+      toast.error('Failed to load employees');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this employee?')) return;
+  const handleDelete = async () => {
     const token = localStorage.getItem('token');
     try {
-      await axios.delete(`${API_URL}/api/employees/${id}`, {
-        headers: { Authorization: token }
+      await axios.delete(`${API_URL}/api/employees/${deleteId}`, {
+        headers: { Authorization: token },
       });
+      toast.success('Employee deleted successfully');
+      setDeleteId(null);
       fetchEmployees();
     } catch (err) {
-      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to delete employee');
     }
   };
 
-  if (loading) return <div style={styles.container}><p>Loading...</p></div>;
+  const departments = [...new Set(employees.map(e => e.department_name).filter(Boolean))];
+
+  const columns = [
+    {
+      key: 'name',
+      label: 'Employee',
+      render: (row) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Avatar name={row.name} size={36} />
+          <div>
+            <div style={{ fontWeight: 600 }}>{row.name}</div>
+            <div style={{ fontSize: 12, color: '#8b93a8' }}>#{row.id}</div>
+          </div>
+        </div>
+      ),
+    },
+    { key: 'email', label: 'Email' },
+    {
+      key: 'department_name',
+      label: 'Department',
+      render: (row) => <Badge variant="default">{row.department_name || '—'}</Badge>,
+    },
+    { key: 'designation', label: 'Designation' },
+    {
+      key: 'salary',
+      label: 'Salary',
+      render: (row) => <span style={{ fontWeight: 600 }}>₹{Number(row.salary).toLocaleString('en-IN')}</span>,
+    },
+  ];
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <PageHeader title="Employees" subtitle="Manage your workforce" />
+        <TableSkeleton rows={6} cols={5} />
+      </AppLayout>
+    );
+  }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h2 style={styles.title}>👥 Employee List</h2>
-        <div style={styles.btnGroup}>
-          <button style={styles.addBtn} onClick={() => navigate('/employees/create')}>
-            + Add Employee
-          </button>
-          <button style={styles.backBtn} onClick={() => navigate('/dashboard')}>
-            Dashboard
-          </button>
-        </div>
-      </div>
+    <AppLayout>
+      <PageHeader
+        title="Employees"
+        subtitle={`${employees.length} team members across your organization`}
+        actions={
+          <Button variant="primary" icon={UserPlus} onClick={() => navigate('/employees/create')}>
+            Add Employee
+          </Button>
+        }
+      />
 
-      <table style={styles.table}>
-        <thead>
-          <tr style={styles.tableHeader}>
-            <th style={styles.th}>ID</th>
-            <th style={styles.th}>Name</th>
-            <th style={styles.th}>Email</th>
-            <th style={styles.th}>Department</th>
-            <th style={styles.th}>Designation</th>
-            <th style={styles.th}>Salary</th>
-            <th style={styles.th}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {employees.length === 0 ? (
-            <tr>
-              <td colSpan="7" style={{textAlign:'center', padding:'20px', color:'#666'}}>
-                No employees yet. Add one!
-              </td>
-            </tr>
-          ) : (
-            employees.map(emp => (
-              <tr key={emp.id} style={styles.tableRow}>
-                <td style={styles.td}>#{emp.id}</td>
-                <td style={styles.td}>{emp.name}</td>
-                <td style={styles.td}>{emp.email}</td>
-                <td style={styles.td}>
-                  <span style={styles.badge}>{emp.department_name}</span>
-                </td>
-                <td style={styles.td}>{emp.designation}</td>
-                <td style={styles.td}>₹{emp.salary}</td>
-                <td style={styles.td}>
-                  <button
-                    style={styles.editBtn}
-                    onClick={() => navigate(`/employees/edit/${emp.id}`)}
-                  >Edit</button>
-                  <button
-                    style={styles.deleteBtn}
-                    onClick={() => handleDelete(emp.id)}
-                  >Delete</button>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
+      <DataTable
+        columns={columns}
+        data={employees}
+        searchKeys={['name', 'email', 'designation', 'department_name']}
+        filterKey="department_name"
+        filterOptions={departments}
+        emptyMessage="No employees yet. Add your first team member!"
+        actions={(row) => (
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={Pencil}
+              onClick={() => navigate(`/employees/edit/${row.id}`)}
+            >
+              Edit
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              icon={Trash2}
+              onClick={() => setDeleteId(row.id)}
+            >
+              Delete
+            </Button>
+          </div>
+        )}
+      />
+
+      <ConfirmModal
+        open={!!deleteId}
+        title="Delete Employee"
+        message="This action cannot be undone. The employee record and associated data will be permanently removed."
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteId(null)}
+      />
+    </AppLayout>
   );
 }
-
-const styles = {
-  container: {
-    padding: '30px', backgroundColor: '#f0f2f5', minHeight: '100vh'
-  },
-  header: {
-    display: 'flex', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: '20px'
-  },
-  title: { color: '#333' },
-  btnGroup: { display: 'flex', gap: '10px' },
-  addBtn: {
-    padding: '10px 20px', backgroundColor: '#4CAF50',
-    color: 'white', border: 'none', borderRadius: '5px',
-    cursor: 'pointer', fontSize: '14px'
-  },
-  backBtn: {
-    padding: '10px 20px', backgroundColor: '#2196F3',
-    color: 'white', border: 'none', borderRadius: '5px',
-    cursor: 'pointer', fontSize: '14px'
-  },
-  table: { width: '100%', borderCollapse: 'collapse', backgroundColor: 'white', borderRadius: '10px', overflow: 'hidden' },
-  tableHeader: { backgroundColor: '#f8f9fa' },
-  th: { padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd', fontSize: '14px' },
-  tableRow: { borderBottom: '1px solid #eee' },
-  td: { padding: '12px', fontSize: '14px', color: '#333' },
-  badge: {
-    backgroundColor: '#2196F3', color: 'white',
-    padding: '3px 10px', borderRadius: '12px', fontSize: '12px'
-  },
-  editBtn: {
-    backgroundColor: '#FF9800', color: 'white',
-    border: 'none', padding: '5px 10px',
-    borderRadius: '4px', cursor: 'pointer', marginRight: '5px', fontSize: '12px'
-  },
-  deleteBtn: {
-    backgroundColor: '#f44336', color: 'white',
-    border: 'none', padding: '5px 10px',
-    borderRadius: '4px', cursor: 'pointer', fontSize: '12px'
-  }
-};
 
 export default EmployeeList;

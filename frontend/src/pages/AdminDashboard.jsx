@@ -1,168 +1,156 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
-import { logout } from '../redux/slices/authSlice';
 import axios from 'axios';
-
-const API_URL = 'https://shivamloginapp-backend.onrender.com';
+import { Trash2, Shield, Users } from 'lucide-react';
+import AppLayout from '../components/layout/AppLayout';
+import PageHeader from '../components/ui/PageHeader';
+import DataTable from '../components/ui/DataTable';
+import Badge from '../components/ui/Badge';
+import Button from '../components/ui/Button';
+import Avatar from '../components/ui/Avatar';
+import ConfirmModal from '../components/ui/ConfirmModal';
+import StatCard from '../components/ui/StatCard';
+import { TableSkeleton } from '../components/ui/Skeleton';
+import { useToast } from '../context/ToastContext';
+import { useTheme } from '../theme/ThemeContext';
+import API_URL from '../config/api';
 
 function AdminDashboard() {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const { user } = useSelector(state => state.auth);
+  const toast = useToast();
+  const { theme } = useTheme();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState('');
+  const [deleteId, setDeleteId] = useState(null);
 
   const fetchUsers = useCallback(async () => {
     const token = localStorage.getItem('token');
     try {
       const res = await axios.get(`${API_URL}/api/admin/users`, {
-        headers: { Authorization: token }
+        headers: { Authorization: token },
       });
       setUsers(res.data);
     } catch (err) {
       if (err.response?.status === 403) {
-        alert('Access denied! Admins only.');
+        toast.error('Access denied. Admins only.');
         navigate('/dashboard');
       } else {
+        toast.error('Failed to load users');
         navigate('/');
       }
     } finally {
       setLoading(false);
     }
-  }, [navigate]);
+  }, [navigate, toast]);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
-  const handleDelete = async (id) => {
+  const handleDelete = async () => {
     const token = localStorage.getItem('token');
-    if (!window.confirm('Are you sure you want to delete this user?')) return;
     try {
-      await axios.delete(`${API_URL}/api/admin/users/${id}`, {
-        headers: { Authorization: token }
+      await axios.delete(`${API_URL}/api/admin/users/${deleteId}`, {
+        headers: { Authorization: token },
       });
-      setMessage('User deleted!');
+      toast.success('User deleted successfully');
+      setDeleteId(null);
       fetchUsers();
     } catch (err) {
-      setMessage('Error deleting user');
+      toast.error(err.response?.data?.message || 'Failed to delete user');
     }
   };
 
-  const handleLogout = async () => {
-    const refreshToken = localStorage.getItem('refreshToken');
-    try {
-      await axios.post(`${API_URL}/api/auth/logout`, { refreshToken });
-    } catch (err) {
-      console.log('Logout error:', err);
-    }
-    dispatch(logout());
-    navigate('/');
-  };
+  const adminCount = users.filter(u => u.role === 'admin').length;
+  const employeeCount = users.filter(u => u.role !== 'admin').length;
+  const roles = [...new Set(users.map(u => u.role).filter(Boolean))];
 
-  if (loading) return <div style={styles.container}><p>Loading...</p></div>;
+  const columns = [
+    {
+      key: 'name',
+      label: 'User',
+      render: (row) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Avatar name={row.name} size={36} />
+          <div>
+            <div style={{ fontWeight: 600 }}>{row.name}</div>
+            <div style={{ fontSize: 12, color: theme.colors.textMuted }}>#{row.id}</div>
+          </div>
+        </div>
+      ),
+    },
+    { key: 'email', label: 'Email' },
+    {
+      key: 'role',
+      label: 'Role',
+      render: (row) => (
+        <Badge variant={row.role === 'admin' ? 'admin' : row.role === 'hr' ? 'accent' : 'default'}>
+          {row.role}
+        </Badge>
+      ),
+    },
+  ];
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <PageHeader title="Admin Panel" subtitle="System administration" />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 28 }}>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} style={{ height: 120, borderRadius: 16, background: theme.colors.glass }} />
+          ))}
+        </div>
+        <TableSkeleton rows={5} cols={3} />
+      </AppLayout>
+    );
+  }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.box}>
-        <h2 style={styles.title}>👑 Admin Dashboard</h2>
-        <p style={styles.subtitle}>Welcome, {user?.name}! Manage all users below.</p>
+    <AppLayout>
+      <PageHeader
+        title="Admin Panel"
+        subtitle="Manage system users and access control"
+      />
 
-        {message && <p style={styles.message}>{message}</p>}
-
-        <table style={styles.table}>
-          <thead>
-            <tr style={styles.tableHeader}>
-              <th style={styles.th}>ID</th>
-              <th style={styles.th}>Name</th>
-              <th style={styles.th}>Email</th>
-              <th style={styles.th}>Role</th>
-              <th style={styles.th}>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map(u => (
-              <tr key={u.id} style={styles.tableRow}>
-                <td style={styles.td}>#{u.id}</td>
-                <td style={styles.td}>{u.name}</td>
-                <td style={styles.td}>{u.email}</td>
-                <td style={styles.td}>
-                  <span style={{
-                    ...styles.badge,
-                    backgroundColor: u.role === 'admin' ? '#2196F3' : '#4CAF50'
-                  }}>
-                    {u.role}
-                  </span>
-                </td>
-                <td style={styles.td}>
-                  {u.role !== 'admin' && (
-                    <button
-                      style={styles.deleteBtn}
-                      onClick={() => handleDelete(u.id)}
-                    >
-                      Delete
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div style={styles.btnRow}>
-          <button style={styles.backBtn} onClick={() => navigate('/dashboard')}>
-            My Dashboard
-          </button>
-          <button style={styles.logoutBtn} onClick={handleLogout}>
-            Logout
-          </button>
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 28 }}>
+        <StatCard title="Total Users" value={users.length} icon={Users} color={theme.colors.blue} />
+        <StatCard title="Administrators" value={adminCount} icon={Shield} color={theme.colors.accent} />
+        <StatCard title="Other Roles" value={employeeCount} icon={Users} color={theme.colors.chart4} />
       </div>
-    </div>
+
+      <DataTable
+        columns={columns}
+        data={users}
+        searchKeys={['name', 'email', 'role']}
+        filterKey="role"
+        filterOptions={roles}
+        emptyMessage="No users found"
+        actions={(row) => (
+          row.role !== 'admin' ? (
+            <Button
+              variant="danger"
+              size="sm"
+              icon={Trash2}
+              onClick={() => setDeleteId(row.id)}
+            >
+              Delete
+            </Button>
+          ) : (
+            <span style={{ fontSize: 12, color: theme.colors.textMuted, fontStyle: 'italic' }}>Protected</span>
+          )
+        )}
+      />
+
+      <ConfirmModal
+        open={!!deleteId}
+        title="Delete User"
+        message="This will permanently remove the user account and all associated data. This action cannot be undone."
+        confirmLabel="Delete User"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteId(null)}
+      />
+    </AppLayout>
   );
 }
-
-const styles = {
-  container: {
-    display: 'flex', justifyContent: 'center',
-    alignItems: 'center', minHeight: '100vh',
-    backgroundColor: '#f0f2f5', padding: '20px'
-  },
-  box: {
-    backgroundColor: 'white', padding: '40px',
-    borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-    width: '100%', maxWidth: '700px'
-  },
-  title: { textAlign: 'center', color: '#333', marginBottom: '5px' },
-  subtitle: { textAlign: 'center', color: '#666', marginBottom: '25px' },
-  message: { textAlign: 'center', color: '#4CAF50', marginBottom: '15px' },
-  table: { width: '100%', borderCollapse: 'collapse', marginBottom: '25px' },
-  tableHeader: { backgroundColor: '#f8f9fa' },
-  th: { padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd', fontSize: '14px' },
-  tableRow: { borderBottom: '1px solid #eee' },
-  td: { padding: '12px', fontSize: '14px', color: '#333' },
-  badge: {
-    color: 'white', padding: '3px 10px',
-    borderRadius: '12px', fontSize: '12px'
-  },
-  deleteBtn: {
-    backgroundColor: '#f44336', color: 'white',
-    border: 'none', padding: '5px 12px',
-    borderRadius: '4px', cursor: 'pointer', fontSize: '12px'
-  },
-  btnRow: { display: 'flex', gap: '10px' },
-  backBtn: {
-    flex: 1, padding: '10px', backgroundColor: '#2196F3',
-    color: 'white', border: 'none', borderRadius: '5px',
-    fontSize: '14px', cursor: 'pointer'
-  },
-  logoutBtn: {
-    flex: 1, padding: '10px', backgroundColor: '#f44336',
-    color: 'white', border: 'none', borderRadius: '5px',
-    fontSize: '14px', cursor: 'pointer'
-  }
-};
 
 export default AdminDashboard;

@@ -1,179 +1,240 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Check, X, MessageSquare, Filter } from 'lucide-react';
+import AppLayout from '../components/layout/AppLayout';
+import PageHeader from '../components/ui/PageHeader';
+import GlassCard from '../components/ui/GlassCard';
+import Badge, { statusVariant } from '../components/ui/Badge';
+import Button from '../components/ui/Button';
+import Avatar from '../components/ui/Avatar';
+import { TableSkeleton } from '../components/ui/Skeleton';
+import { useToast } from '../context/ToastContext';
+import { useTheme } from '../theme/ThemeContext';
 import useAuth from '../hooks/useAuth';
 
 function LeaveApproval() {
   const navigate = useNavigate();
+  const toast = useToast();
+  const { theme } = useTheme();
   const { getToken, API_URL, canApprove } = useAuth();
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState('');
   const [remarks, setRemarks] = useState({});
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [actionLoading, setActionLoading] = useState(null);
 
   useEffect(() => { // eslint-disable-line
-  if (!canApprove) {
-    navigate('/dashboard');
-    return;
-  }
-  fetchLeaves();
- }, [canApprove]); // eslint-disable-line
+    if (!canApprove) {
+      navigate('/dashboard');
+      return;
+    }
+    fetchLeaves();
+  }, [canApprove, navigate]); // eslint-disable-line
 
   const fetchLeaves = async () => {
     const token = getToken();
     try {
       const res = await axios.get(`${API_URL}/api/leave/all`, {
-        headers: { Authorization: token }
+        headers: { Authorization: token },
       });
       setLeaves(res.data);
     } catch (err) {
-      console.error(err);
+      toast.error('Failed to load leave requests');
     } finally {
       setLoading(false);
     }
   };
 
   const handleAction = async (id, action) => {
+    setActionLoading(id);
     const token = getToken();
     try {
       await axios.put(`${API_URL}/api/leave/action/${id}`,
         { action, remarks: remarks[id] || '' },
         { headers: { Authorization: token } }
       );
-      setMessage(`Leave ${action} successfully!`);
+      toast.success(`Leave ${action} successfully`);
       fetchLeaves();
     } catch (err) {
-      setMessage(err.response?.data?.message || 'Something went wrong');
+      toast.error(err.response?.data?.message || 'Action failed');
+    } finally {
+      setActionLoading(null);
     }
   };
 
-  const getStatusColor = (status) => {
-    if (status === 'approved') return '#4CAF50';
-    if (status === 'rejected') return '#f44336';
-    return '#FF9800';
-  };
+  const formatDate = (d) => new Date(d).toLocaleDateString('en-IN', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  });
 
-  if (loading) return <div style={styles.container}><p>Loading...</p></div>;
+  const filtered = statusFilter === 'all'
+    ? leaves
+    : leaves.filter(l => l.status === statusFilter);
+
+  const pendingCount = leaves.filter(l => l.status === 'pending').length;
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <PageHeader title="Leave Approvals" subtitle="Review and manage leave requests" />
+        <TableSkeleton rows={4} cols={4} />
+      </AppLayout>
+    );
+  }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h2 style={styles.title}>✅ Leave Approval Panel</h2>
-        <button style={styles.backBtn} onClick={() => navigate('/dashboard')}>
-          Dashboard
-        </button>
+    <AppLayout>
+      <PageHeader
+        title="Leave Approvals"
+        subtitle={`${pendingCount} pending request${pendingCount !== 1 ? 's' : ''} awaiting review`}
+      />
+
+      {/* Filter tabs */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
+        {['all', 'pending', 'approved', 'rejected'].map(status => (
+          <button
+            key={status}
+            onClick={() => setStatusFilter(status)}
+            style={{
+              padding: '8px 18px',
+              borderRadius: 20,
+              border: `1.5px solid ${statusFilter === status ? theme.colors.accent : theme.colors.border}`,
+              background: statusFilter === status ? `${theme.colors.accent}15` : 'transparent',
+              color: statusFilter === status ? theme.colors.accent : theme.colors.textSecondary,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              textTransform: 'capitalize',
+              transition: 'all 0.2s',
+            }}
+          >
+            {status === 'all' ? 'All Requests' : status}
+            {status === 'pending' && pendingCount > 0 && (
+              <span style={{
+                marginLeft: 6,
+                background: theme.colors.accent,
+                color: '#fff',
+                borderRadius: 10,
+                padding: '1px 7px',
+                fontSize: 11,
+              }}>
+                {pendingCount}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
-      {message && <p style={styles.message}>{message}</p>}
-
-      {leaves.length === 0 ? (
-        <div style={styles.empty}>No leave applications found!</div>
+      {filtered.length === 0 ? (
+        <GlassCard style={{ padding: 60, textAlign: 'center' }}>
+          <Filter size={32} color={theme.colors.textMuted} style={{ marginBottom: 16 }} />
+          <p style={{ color: theme.colors.textSecondary, fontSize: 14 }}>No leave requests match this filter</p>
+        </GlassCard>
       ) : (
-        leaves.map(leave => (
-          <div key={leave.id} style={styles.card}>
-            <div style={styles.cardHeader}>
-              <div>
-                <h3 style={styles.empName}>👤 {leave.employee_name}</h3>
-                <p style={styles.empEmail}>{leave.email}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {filtered.map(leave => (
+            <GlassCard key={leave.id} style={{ padding: 24 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <Avatar name={leave.employee_name} size={48} />
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: theme.colors.text }}>
+                      {leave.employee_name}
+                    </h3>
+                    <p style={{ margin: '2px 0 0', fontSize: 13, color: theme.colors.textMuted }}>
+                      {leave.email}
+                    </p>
+                  </div>
+                </div>
+                <Badge variant={statusVariant(leave.status)}>{leave.status}</Badge>
               </div>
-              <span style={{
-                ...styles.badge,
-                backgroundColor: getStatusColor(leave.status)
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                gap: 16,
+                padding: 16,
+                borderRadius: 12,
+                background: `${theme.colors.blue}06`,
+                marginBottom: leave.status === 'pending' ? 20 : 0,
               }}>
-                {leave.status}
-              </span>
-            </div>
-
-            <div style={styles.cardBody}>
-              <p>📋 <strong>Leave Type:</strong> {leave.leave_name}</p>
-              <p>📅 <strong>From:</strong> {new Date(leave.from_date).toLocaleDateString()}</p>
-              <p>📅 <strong>To:</strong> {new Date(leave.to_date).toLocaleDateString()}</p>
-              <p>⏱️ <strong>Days:</strong> {leave.total_days}</p>
-              <p>💬 <strong>Reason:</strong> {leave.reason}</p>
-            </div>
-
-            {leave.status === 'pending' && (
-              <div style={styles.cardFooter}>
-                <input
-                  style={styles.remarksInput}
-                  placeholder="Add remarks (optional)"
-                  onChange={e => setRemarks({...remarks, [leave.id]: e.target.value})}
-                />
-                <div style={styles.actionBtns}>
-                  <button
-                    style={styles.approveBtn}
-                    onClick={() => handleAction(leave.id, 'approved')}
-                  >
-                    ✅ Approve
-                  </button>
-                  <button
-                    style={styles.rejectBtn}
-                    onClick={() => handleAction(leave.id, 'rejected')}
-                  >
-                    ❌ Reject
-                  </button>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: theme.colors.textMuted, marginBottom: 4 }}>Leave Type</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: theme.colors.text }}>{leave.leave_name}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: theme.colors.textMuted, marginBottom: 4 }}>Duration</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: theme.colors.text }}>
+                    {formatDate(leave.from_date)} — {formatDate(leave.to_date)}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: theme.colors.textMuted, marginBottom: 4 }}>Total Days</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: theme.colors.accent }}>{leave.total_days} days</div>
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: theme.colors.textMuted, marginBottom: 4 }}>Reason</div>
+                  <div style={{ fontSize: 14, color: theme.colors.textSecondary, lineHeight: 1.5 }}>{leave.reason}</div>
                 </div>
               </div>
-            )}
-          </div>
-        ))
+
+              {leave.status === 'pending' && (
+                <div>
+                  <div style={{ position: 'relative', marginBottom: 16 }}>
+                    <MessageSquare size={16} style={{
+                      position: 'absolute',
+                      left: 14,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: theme.colors.textMuted,
+                    }} />
+                    <input
+                      placeholder="Add remarks (optional)"
+                      value={remarks[leave.id] || ''}
+                      onChange={e => setRemarks(prev => ({ ...prev, [leave.id]: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px 12px 40px',
+                        borderRadius: 10,
+                        border: `1px solid ${theme.colors.border}`,
+                        background: theme.colors.inputBg,
+                        color: theme.colors.text,
+                        fontSize: 14,
+                        fontFamily: 'inherit',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <Button
+                      variant="success"
+                      icon={Check}
+                      fullWidth
+                      disabled={actionLoading === leave.id}
+                      onClick={() => handleAction(leave.id, 'approved')}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      variant="danger"
+                      icon={X}
+                      fullWidth
+                      disabled={actionLoading === leave.id}
+                      onClick={() => handleAction(leave.id, 'rejected')}
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </GlassCard>
+          ))}
+        </div>
       )}
-    </div>
+    </AppLayout>
   );
 }
-
-const styles = {
-  container: { padding: '30px', backgroundColor: '#f0f2f5', minHeight: '100vh' },
-  header: {
-    display: 'flex', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: '20px'
-  },
-  title: { color: '#333' },
-  backBtn: {
-    padding: '10px 20px', backgroundColor: '#2196F3',
-    color: 'white', border: 'none', borderRadius: '5px',
-    cursor: 'pointer', fontSize: '14px'
-  },
-  message: {
-    backgroundColor: '#e8f5e9', padding: '10px',
-    borderRadius: '5px', color: '#4CAF50',
-    marginBottom: '15px', textAlign: 'center'
-  },
-  empty: { textAlign: 'center', padding: '50px', color: '#666' },
-  card: {
-    backgroundColor: 'white', borderRadius: '10px',
-    padding: '20px', marginBottom: '15px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-  },
-  cardHeader: {
-    display: 'flex', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: '15px'
-  },
-  empName: { color: '#333', margin: 0 },
-  empEmail: { color: '#666', fontSize: '13px', margin: '3px 0' },
-  badge: {
-    color: 'white', padding: '5px 15px',
-    borderRadius: '12px', fontSize: '13px'
-  },
-  cardBody: { color: '#555', fontSize: '14px', lineHeight: '1.8' },
-  cardFooter: { marginTop: '15px', borderTop: '1px solid #eee', paddingTop: '15px' },
-  remarksInput: {
-    width: '100%', padding: '8px',
-    borderRadius: '5px', border: '1px solid #ddd',
-    fontSize: '14px', marginBottom: '10px',
-    boxSizing: 'border-box'
-  },
-  actionBtns: { display: 'flex', gap: '10px' },
-  approveBtn: {
-    flex: 1, padding: '10px', backgroundColor: '#4CAF50',
-    color: 'white', border: 'none', borderRadius: '5px',
-    cursor: 'pointer', fontSize: '14px'
-  },
-  rejectBtn: {
-    flex: 1, padding: '10px', backgroundColor: '#f44336',
-    color: 'white', border: 'none', borderRadius: '5px',
-    cursor: 'pointer', fontSize: '14px'
-  }
-};
 
 export default LeaveApproval;

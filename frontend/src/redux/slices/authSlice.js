@@ -1,13 +1,13 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import API_URL from '../../config/api';
 
-// Fetch user profile from backend
 export const fetchUser = createAsyncThunk(
   'auth/fetchUser',
   async (_, { rejectWithValue }) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await axios.get('https://shivamloginapp-backend.onrender.com/api/user/profile', {
+      const res = await axios.get(`${API_URL}/api/user/profile`, {
         headers: { Authorization: token }
       });
       return res.data;

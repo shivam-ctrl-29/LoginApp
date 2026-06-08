@@ -1,70 +1,64 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
+import { CheckCircle, Loader } from 'lucide-react';
+import AuthLayout from '../components/layout/AuthLayout';
+import { useTheme } from '../theme/ThemeContext';
+import API_URL from '../config/api';
 
 function VerifyEmail() {
   const { token } = useParams();
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const [message, setMessage] = useState('Verifying your email...');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const verify = async () => {
       try {
-        const res = await axios.get(
-          `http://localhost:4000/api/auth/verify-email/${token}`
-        );
+        const res = await axios.get(`${API_URL}/api/auth/verify-email/${token}`);
         setMessage(res.data.message);
         setIsSuccess(true);
         setTimeout(() => navigate('/'), 3000);
       } catch (err) {
         setMessage(err.response?.data?.message || 'Verification failed');
         setIsSuccess(false);
+      } finally {
+        setLoading(false);
       }
     };
-
     verify();
   }, [token, navigate]);
 
   return (
-    <div style={styles.container}>
-      <div style={styles.box}>
-        <div style={styles.icon}>
-          {isSuccess ? '✅' : '⏳'}
-        </div>
-        <h2 style={styles.title}>Email Verification</h2>
-        <p style={{
-          ...styles.message,
-          color: isSuccess ? '#4CAF50' : '#666'
+    <AuthLayout>
+      <div style={{ textAlign: 'center', padding: '20px 0' }}>
+        <div style={{
+          width: 72, height: 72, borderRadius: 20, margin: '0 auto 24px',
+          background: isSuccess ? `${theme.colors.success}18` : `${theme.colors.info}18`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
+          {loading ? (
+            <Loader size={32} color={theme.colors.info} className="skeleton-shimmer" />
+          ) : (
+            <CheckCircle size={32} color={isSuccess ? theme.colors.success : theme.colors.danger} />
+          )}
+        </div>
+        <h2 style={{ margin: '0 0 12px', fontSize: 22, fontWeight: 800, color: theme.colors.text }}>
+          Email Verification
+        </h2>
+        <p style={{ margin: 0, fontSize: 15, color: isSuccess ? theme.colors.success : theme.colors.textSecondary, lineHeight: 1.6 }}>
           {message}
         </p>
         {isSuccess && (
-          <p style={styles.redirect}>
-            Redirecting to login in 3 seconds...
+          <p style={{ color: theme.colors.textMuted, fontSize: 13, marginTop: 16 }}>
+            Redirecting to login...
           </p>
         )}
       </div>
-    </div>
+    </AuthLayout>
   );
 }
-
-const styles = {
-  container: {
-    display: 'flex', justifyContent: 'center',
-    alignItems: 'center', height: '100vh',
-    backgroundColor: '#f0f2f5'
-  },
-  box: {
-    backgroundColor: 'white', padding: '40px',
-    borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-    display: 'flex', flexDirection: 'column',
-    width: '300px', alignItems: 'center'
-  },
-  icon: { fontSize: '50px', marginBottom: '20px' },
-  title: { color: '#333', marginBottom: '15px' },
-  message: { textAlign: 'center', fontSize: '15px' },
-  redirect: { color: '#999', fontSize: '13px', marginTop: '10px' }
-};
 
 export default VerifyEmail;
