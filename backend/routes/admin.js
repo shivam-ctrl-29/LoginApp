@@ -1,25 +1,57 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../config/db');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/authorize');
 
+// GET all users
 router.get('/users', auth, authorize('admin'), async (req, res) => {
   try {
-    const users = await pool.query('SELECT id, name, email, role, verified FROM users ORDER BY id ASC');
-    res.json(users.rows);
+    const users = await prisma.user.findMany({
+      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(users);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
-router.delete('/users/:id', auth, authorize('admin'), async (req, res) => {
-  const { id } = req.params;
+// PUT update user role
+router.put('/users/:id/role', auth, authorize('admin'), async (req, res) => {
+  const { role } = req.body;
   try {
-    await pool.query('DELETE FROM approval_history WHERE approved_by = $1', [id]);
-    await pool.query('DELETE FROM password_reset WHERE user_id = $1', [id]);
-    await pool.query('DELETE FROM users WHERE id = $1', [id]);
-    res.json({ message: 'User deleted successfully!' });
+    const user = await prisma.user.update({
+      where: { id: parseInt(req.params.id) },
+      data: { role },
+    });
+    res.json({ message: 'Role updated!', user });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// DELETE user
+router.delete('/users/:id', auth, authorize('admin'), async (req, res) => {
+  try {
+    await prisma.user.delete({ where: { id: parseInt(req.params.id) } });
+    res.json({ message: 'User deleted!' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// GET dashboard stats
+router.get('/stats', auth, async (req, res) => {
+  try {
+    const [totalEmployees, totalDepartments, pendingLeaves, approvedLeaves] = await Promise.all([
+      prisma.employeeProfile.count(),
+      prisma.department.count(),
+      prisma.leaveRequest.count({ where: { status: 'pending' } }),
+      prisma.leaveRequest.count({ where: { status: 'approved' } }),
+    ]);
+    res.json({ totalEmployees, totalDepartments, pendingLeaves, approvedLeaves });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

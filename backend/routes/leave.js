@@ -1,29 +1,69 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../config/db');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 const auth = require('../middleware/auth');
-const authorize = require('../middleware/authorize');
+const createNotification = require('../src/utils/notificationHelper');
+
+const mapLeave = (l) => ({
+  ...l,
+  from_date: l.startDate,
+  to_date: l.endDate,
+  leave_type_id: l.leaveTypeId,
+  user_id: l.userId,
+  leave_name: l.leaveType?.name || '',
+  employee_name: l.user?.name || '',
+  days: l.days,
+  total_days: l.days,
+});
+
+const approveLeave = async (req, res) => {
+  const status = req.body.status || req.body.action;
+  const comments = req.body.comments || req.body.remarks || '';
+  try {
+    const leave = await prisma.leaveRequest.update({
+      where: { id: parseInt(req.params.id) },
+      data: { status },
+    });
+    await prisma.leaveApproval.create({
+      data: {
+        leaveRequestId: parseInt(req.params.id),
+        approverId: req.user.id,
+        approverRole: req.user.role,
+        status,
+        comments,
+      }
+    });
+    await createNotification({
+      userId: leave.userId,
+      title: `Leave ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+      message: `Your leave request has been ${status}.${comments ? ' Comment: ' + comments : ''}`,
+    });
+    res.json({ message: `Leave ${status}!`, leave });
+  } catch (err) {
+    console.error('APPROVE ERROR:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
 
 // GET leave types - PUBLIC
 router.get('/types', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM leave_types ORDER BY id ASC');
-    res.json(result.rows);
+    const types = await prisma.leaveType.findMany();
+    res.json(types.map(t => ({ id: t.id, leave_name: t.name, max_days: t.maxDays })));
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
-// GET my leave balance
+// GET leave balance
 router.get('/balance', auth, async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT lb.*, lt.leave_name, lt.total_days
-      FROM leave_balance lb
-      INNER JOIN leave_types lt ON lb.leave_type_id = lt.id
-      WHERE lb.employee_id = $1
-    `, [req.user.id]);
-    res.json(result.rows);
+    const year = new Date().getFullYear();
+    const balances = await prisma.leaveBalance.findMany({
+      where: { userId: req.user.id, year },
+    });
+    res.json(balances);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -32,176 +72,81 @@ router.get('/balance', auth, async (req, res) => {
 // POST apply leave
 router.post('/apply', auth, async (req, res) => {
   const { leave_type_id, from_date, to_date, reason } = req.body;
-  const employee_id = req.user.id;
-
   try {
-    // Calculate total days
-    const from = new Date(from_date);
-    const to = new Date(to_date);
-    const total_days = Math.ceil((to - from) / (1000 * 60 * 60 * 24)) + 1;
-
-    // Check leave balance
-    const balance = await pool.query(
-      'SELECT * FROM leave_balance WHERE employee_id = $1 AND leave_type_id = $2',
-      [employee_id, leave_type_id]
-    );
-
-    if (balance.rows.length > 0 && balance.rows[0].available_days < total_days) {
-      return res.status(400).json({ message: 'Insufficient leave balance!' });
-    }
-
-    // Apply leave
-    const result = await pool.query(`
-      INSERT INTO leave_applications
-      (employee_id, leave_type_id, from_date, to_date, total_days, reason, status)
-      VALUES ($1, $2, $3, $4, $5, $6, 'pending') RETURNING *
-    `, [employee_id, leave_type_id, from_date, to_date, total_days, reason]);
-
-    res.status(201).json({
-      message: 'Leave applied successfully!',
-      leave: result.rows[0]
+    const start = new Date(from_date);
+    const end = new Date(to_date);
+    const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    const request = await prisma.leaveRequest.create({
+      data: {
+        userId: req.user.id,
+        leaveTypeId: parseInt(leave_type_id),
+        startDate: start,
+        endDate: end,
+        days,
+        reason,
+        status: 'pending',
+      },
+      include: { leaveType: true },
     });
+    await createNotification({
+      userId: req.user.id,
+      title: 'Leave Request Submitted',
+      message: `Your leave request for ${days} day(s) has been submitted.`,
+    });
+    res.status(201).json({ message: 'Leave applied!', request: mapLeave(request) });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
-// GET my leave applications
+// GET my leaves
 router.get('/my', auth, async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT la.*, lt.leave_name, u.name as employee_name
-      FROM leave_applications la
-      INNER JOIN leave_types lt ON la.leave_type_id = lt.id
-      INNER JOIN users u ON la.employee_id = u.id
-      WHERE la.employee_id = $1
-      ORDER BY la.created_at DESC
-    `, [req.user.id]);
-    res.json(result.rows);
+    const leaves = await prisma.leaveRequest.findMany({
+      where: { userId: req.user.id },
+      include: { leaveType: true, approvals: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(leaves.map(mapLeave));
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
-// GET all leave applications - Manager/HR/Admin
+// GET all leaves
 router.get('/all', auth, async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT la.*, lt.leave_name, u.name as employee_name, u.email
-      FROM leave_applications la
-      INNER JOIN leave_types lt ON la.leave_type_id = lt.id
-      INNER JOIN users u ON la.employee_id = u.id
-      ORDER BY la.created_at DESC
-    `);
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-});
-
-// PUT approve/reject leave - Manager/HR/Admin only
-router.put('/action/:id', auth, async (req, res) => {
-  const { id } = req.params;
-  const { action, remarks } = req.body;
-  const approved_by = req.user.id;
-  const role = req.user.role;
-
-  if (!['admin', 'hr', 'manager'].includes(role)) {
-    return res.status(403).json({ message: 'Not authorized!' });
-  }
-
-  const client = await pool.connect();
-
-  try {
-    // Start transaction
-    await client.query('BEGIN');
-
-    // Get leave application
-    const leaveResult = await client.query(
-      'SELECT * FROM leave_applications WHERE id = $1', [id]
-    );
-
-    if (leaveResult.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ message: 'Leave not found' });
-    }
-
-    const leave = leaveResult.rows[0];
-
-    // Update leave status
-    await client.query(
-      'UPDATE leave_applications SET status = $1 WHERE id = $2',
-      [action, id]
-    );
-
-    // If approved - deduct leave balance
-    if (action === 'approved') {
-      const balanceCheck = await client.query(
-        'SELECT * FROM leave_balance WHERE employee_id = $1 AND leave_type_id = $2',
-        [leave.employee_id, leave.leave_type_id]
-      );
-
-      if (balanceCheck.rows.length > 0) {
-        await client.query(
-          'UPDATE leave_balance SET available_days = available_days - $1 WHERE employee_id = $2 AND leave_type_id = $3',
-          [leave.total_days, leave.employee_id, leave.leave_type_id]
-        );
-      }
-    }
-
-    // Insert audit log
-    await client.query(`
-      INSERT INTO approval_history (leave_id, approved_by, action, remarks)
-      VALUES ($1, $2, $3, $4)
-    `, [id, approved_by, action, remarks]);
-
-    // Commit transaction
-    await client.query('COMMIT');
-
-    res.json({ message: `Leave ${action} successfully!` });
-
-  } catch (err) {
-    await client.query('ROLLBACK');
-    res.status(500).json({ message: 'Server error', error: err.message });
-  } finally {
-    client.release();
-  }
-});
-
-// GET dashboard stats
-router.get('/stats', auth, async (req, res) => {
-  try {
-    const total = await pool.query('SELECT COUNT(*) FROM leave_applications');
-    const pending = await pool.query("SELECT COUNT(*) FROM leave_applications WHERE status = 'pending'");
-    const approved = await pool.query("SELECT COUNT(*) FROM leave_applications WHERE status = 'approved'");
-    const rejected = await pool.query("SELECT COUNT(*) FROM leave_applications WHERE status = 'rejected'");
-
-    res.json({
-      total: total.rows[0].count,
-      pending: pending.rows[0].count,
-      approved: approved.rows[0].count,
-      rejected: rejected.rows[0].count
+    const leaves = await prisma.leaveRequest.findMany({
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        leaveType: true,
+        approvals: true,
+      },
+      orderBy: { createdAt: 'desc' },
     });
+    res.json(leaves.map(mapLeave));
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
-// GET approval history for a leave
-router.get('/history/:id', auth, async (req, res) => {
-  const { id } = req.params;
-  try {
-    const result = await pool.query(`
-      SELECT ah.*, u.name as approver_name
-      FROM approval_history ah
-      INNER JOIN users u ON ah.approved_by = u.id
-      WHERE ah.leave_id = $1
-      ORDER BY ah.created_at DESC
-    `, [id]);
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-});
+// PUT approve/reject routes
+router.put('/:id/approve', auth, approveLeave);
+router.put('/action/:id', auth, approveLeave);
 
 module.exports = router;
+
+// GET leave stats
+router.get('/stats', auth, async (req, res) => {
+  try {
+    const [pending, approved, rejected, total] = await Promise.all([
+      prisma.leaveRequest.count({ where: { status: 'pending' } }),
+      prisma.leaveRequest.count({ where: { status: 'approved' } }),
+      prisma.leaveRequest.count({ where: { status: 'rejected' } }),
+      prisma.leaveRequest.count(),
+    ]);
+    res.json({ pending, approved, rejected, total });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});

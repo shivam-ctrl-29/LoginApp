@@ -22,6 +22,10 @@ function CreateEmployee() {
   const [previews, setPreviews] = useState([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'employee',
     department_id: '',
     phone: '',
     address: '',
@@ -30,7 +34,8 @@ function CreateEmployee() {
   });
 
   useEffect(() => {
-    axios.get(`${API_URL}/api/departments`).then(res => setDepartments(res.data)).catch(console.error);
+    const token = localStorage.getItem('token');
+    axios.get(`${API_URL}/api/departments`, { headers: { Authorization: token } }).then(res => setDepartments(res.data)).catch(console.error);
     axios.get(`${API_URL}/api/skills`).then(res => setSkills(res.data)).catch(console.error);
   }, []);
 
@@ -55,6 +60,10 @@ function CreateEmployee() {
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
+    if (!form.name || !form.email) {
+      toast.warning('Please enter name and email');
+      return;
+    }
     if (!form.department_id) {
       toast.warning('Please select a department');
       return;
@@ -95,6 +104,37 @@ function CreateEmployee() {
 
       <GlassCard style={{ padding: 32, maxWidth: 640 }}>
         <form onSubmit={handleSubmit}>
+
+          <FloatingInput
+            label="Full Name"
+            value={form.name}
+            onChange={e => updateForm('name', e.target.value)}
+            required
+          />
+          <FloatingInput
+            label="Email Address"
+            type="email"
+            value={form.email}
+            onChange={e => updateForm('email', e.target.value)}
+            required
+          />
+          <FloatingInput
+            label="Password"
+            type="password"
+            value={form.password}
+            onChange={e => updateForm('password', e.target.value)}
+          />
+          <FloatingSelect
+            label="Role"
+            value={form.role}
+            onChange={e => updateForm('role', e.target.value)}
+          >
+            <option value="employee">Employee</option>
+            <option value="manager">Manager</option>
+            <option value="hr">HR</option>
+            <option value="admin">Admin</option>
+          </FloatingSelect>
+
           <FloatingSelect
             label="Department"
             value={form.department_id}
@@ -134,40 +174,24 @@ function CreateEmployee() {
           {/* Skills */}
           <div style={{ marginBottom: 24 }}>
             <label style={{
-              display: 'block',
-              fontSize: 11,
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-              color: theme.colors.textMuted,
-              marginBottom: 12,
-            }}>
-              Skills
-            </label>
+              display: 'block', fontSize: 11, fontWeight: 700,
+              textTransform: 'uppercase', letterSpacing: '0.06em',
+              color: theme.colors.textMuted, marginBottom: 12,
+            }}>Skills</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {skills.map(s => {
                 const selected = selectedSkills.includes(s.id);
                 return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => handleSkillToggle(s.id)}
+                  <button key={s.id} type="button" onClick={() => handleSkillToggle(s.id)}
                     style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: '8px 16px',
-                      borderRadius: 20,
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '8px 16px', borderRadius: 20,
                       border: `1.5px solid ${selected ? theme.colors.accent : theme.colors.border}`,
                       background: selected ? `${theme.colors.accent}18` : 'transparent',
                       color: selected ? theme.colors.accent : theme.colors.text,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      transition: 'all 0.2s',
-                    }}
-                  >
+                      fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      fontFamily: 'inherit', transition: 'all 0.2s',
+                    }}>
                     {selected && <Check size={14} />}
                     {s.skill_name}
                   </button>
@@ -179,28 +203,16 @@ function CreateEmployee() {
           {/* Image upload */}
           <div style={{ marginBottom: 28 }}>
             <label style={{
-              display: 'block',
-              fontSize: 11,
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-              color: theme.colors.textMuted,
-              marginBottom: 12,
-            }}>
-              Profile Images (max 5)
-            </label>
+              display: 'block', fontSize: 11, fontWeight: 700,
+              textTransform: 'uppercase', letterSpacing: '0.06em',
+              color: theme.colors.textMuted, marginBottom: 12,
+            }}>Profile Images (max 5)</label>
             <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 10,
-              padding: 24,
-              borderRadius: 12,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              gap: 10, padding: 24, borderRadius: 12,
               border: `2px dashed ${theme.colors.border}`,
-              cursor: 'pointer',
-              color: theme.colors.textSecondary,
-              fontSize: 14,
-              transition: 'border-color 0.2s',
+              cursor: 'pointer', color: theme.colors.textSecondary,
+              fontSize: 14, transition: 'border-color 0.2s',
             }}>
               <Upload size={20} />
               Click to upload images
@@ -210,30 +222,16 @@ function CreateEmployee() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 16 }}>
                 {previews.map((src, i) => (
                   <div key={i} style={{ position: 'relative' }}>
-                    <img
-                      src={src}
-                      alt={`Preview ${i + 1}`}
-                      style={{ width: 72, height: 72, borderRadius: 12, objectFit: 'cover', border: `2px solid ${theme.colors.border}` }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(i)}
+                    <img src={src} alt={`Preview ${i + 1}`}
+                      style={{ width: 72, height: 72, borderRadius: 12, objectFit: 'cover', border: `2px solid ${theme.colors.border}` }} />
+                    <button type="button" onClick={() => removeImage(i)}
                       style={{
-                        position: 'absolute',
-                        top: -6,
-                        right: -6,
-                        width: 22,
-                        height: 22,
-                        borderRadius: '50%',
-                        background: theme.colors.danger,
-                        border: 'none',
-                        color: '#fff',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
+                        position: 'absolute', top: -6, right: -6,
+                        width: 22, height: 22, borderRadius: '50%',
+                        background: theme.colors.danger, border: 'none',
+                        color: '#fff', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
                       <X size={12} />
                     </button>
                   </div>

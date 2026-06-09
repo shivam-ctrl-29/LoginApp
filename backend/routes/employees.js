@@ -1,74 +1,101 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../config/db');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 const auth = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
+const bcrypt = require('bcryptjs');
 
-// Multer setup
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  }
+  destination: (req, file, cb) => { cb(null, 'uploads/'); },
+  filename: (req, file, cb) => { cb(null, Date.now() + path.extname(file.originalname)); }
 });
-
-const upload = multer({
-  storage,
-  limits: { files: 5 }
-});
+const upload = multer({ storage, limits: { files: 5 } });
 
 // POST create employee
 router.post('/', auth, async (req, res) => {
-  const { department_id, phone, address, designation, salary, skill_ids } = req.body;
-  const user_id = req.user.id;
+  const { name, email, password, role, department_id, phone, address, designation, salary, skill_ids } = req.body;
   try {
-    // Create employee profile
-    const result = await pool.query(
-      `INSERT INTO employee_profiles
-       (user_id, department_id, phone, address, designation, salary)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [user_id, department_id, phone, address, designation, salary]
-    );
-    const employee = result.rows[0];
+    let userId;
 
-    // Add skills
-    if (skill_ids && skill_ids.length > 0) {
-      for (const skill_id of skill_ids) {
-        await pool.query(
-          'INSERT INTO employee_skills (employee_id, skill_id) VALUES ($1, $2)',
-          [employee.id, skill_id]
-        );
+    if (email) {
+      // Create new user account
+      let user = await prisma.user.findUnique({ where: { email } });
+      if (!user) {
+        const hashed = await bcrypt.hash(password || 'Password@123', 10);
+        user = await prisma.user.create({
+          data: { name, email, password: hashed, role: role || 'employee', isVerified: true }
+        });
       }
+      userId = user.id;
+    } else {
+      // Use logged in user
+      userId = req.user.id;
     }
 
-    res.status(201).json({ message: 'Employee created!', employee });
+    const existing = await prisma.employeeProfile.findUnique({ where: { userId } });
+    if (existing) return res.status(400).json({ message: 'Employee profile already exists for this user' });
+
+    const skillMap = {"1":"JavaScript","2":"TypeScript","3":"React","4":"Node.js","5":"Python","6":"Java","7":"C++","8":"SQL","9":"PostgreSQL","10":"MongoDB","11":"HTML","12":"CSS","13":"Git","14":"Docker","15":"AWS","16":"REST API","17":"GraphQL","18":"Redux","19":"Next.js","20":"Express.js","21":"Prisma","22":"Figma","23":"Photoshop","24":"Excel","25":"Communication","26":"Leadership","27":"Project Management","28":"Agile","29":"Scrum"}; const ids = skill_ids ? (Array.isArray(skill_ids) ? skill_ids : [skill_ids]) : []; const skillsArray = ids.map(id => skillMap[String(id)] || String(id));
+
+    const profile = await prisma.employeeProfile.create({
+      data: {
+        userId,
+        departmentId: department_id ? parseInt(department_id) : null,
+        phone,
+        address,
+        designation,
+        salary: salary ? parseFloat(salary) : null,
+        skills: skillsArray,
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true, role: true } },
+        department: true,
+      }
+    });
+
+    res.status(201).json({ message: 'Employee created!', employee: { ...profile, id: profile.id } });
+  } catch (err) {
+    console.error('CREATE EMPLOYEE ERROR:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// POST upload images
+router.post('/upload/:id', auth, upload.array('images', 5), async (req, res) => {
+  try {
+    const images = req.files ? req.files.map(f => f.filename) : [];
+    if (images.length > 0) {
+      await prisma.employeeProfile.update({
+        where: { id: parseInt(req.params.id) },
+        data: { profileImage: images[0] }
+      });
+    }
+    res.json({ message: 'Images uploaded!' });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
-// GET all employees with JOIN
+// GET all employees
 router.get('/', auth, async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT
-        ep.id,
-        u.name,
-        u.email,
-        d.department_name,
-        ep.phone,
-        ep.designation,
-        ep.salary,
-        ep.created_at
-      FROM employee_profiles ep
-      INNER JOIN users u ON ep.user_id = u.id
-      INNER JOIN departments d ON ep.department_id = d.id
-      ORDER BY ep.id DESC
-    `);
-    res.json(result.rows);
+    const employees = await prisma.employeeProfile.findMany({
+      include: {
+        user: { select: { id: true, name: true, email: true, role: true } },
+        department: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    const mapped = employees.map(e => ({
+      ...e,
+      name: e.user?.name,
+      email: e.user?.email,
+      role: e.user?.role,
+      department_name: e.department?.departmentName,
+    }));
+    res.json(mapped);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -76,71 +103,39 @@ router.get('/', auth, async (req, res) => {
 
 // GET single employee
 router.get('/:id', auth, async (req, res) => {
-  const { id } = req.params;
   try {
-    // Get employee details
-    const empResult = await pool.query(`
-      SELECT
-        ep.*,
-        u.name,
-        u.email,
-        d.department_name
-      FROM employee_profiles ep
-      INNER JOIN users u ON ep.user_id = u.id
-      INNER JOIN departments d ON ep.department_id = d.id
-      WHERE ep.id = $1
-    `, [id]);
-
-    if (empResult.rows.length === 0) {
-      return res.status(404).json({ message: 'Employee not found' });
-    }
-
-    // Get skills
-    const skillsResult = await pool.query(`
-      SELECT s.skill_name
-      FROM employee_skills es
-      INNER JOIN skills s ON es.skill_id = s.id
-      WHERE es.employee_id = $1
-    `, [id]);
-
-    // Get images
-    const imagesResult = await pool.query(
-      'SELECT * FROM employee_images WHERE employee_id = $1', [id]
-    );
-
-    res.json({
-      ...empResult.rows[0],
-      skills: skillsResult.rows,
-      images: imagesResult.rows
+    const profile = await prisma.employeeProfile.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: {
+        user: { select: { id: true, name: true, email: true, role: true } },
+        department: true,
+      }
     });
+    if (!profile) return res.status(404).json({ message: 'Employee not found' });
+    res.json({ ...profile, name: profile.user?.name, email: profile.user?.email, department_name: profile.department?.departmentName });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
 // PUT update employee
-router.put('/:id', auth, async (req, res) => {
-  const { id } = req.params;
+router.put('/:id', auth, upload.array('images', 5), async (req, res) => {
   const { department_id, phone, address, designation, salary, skill_ids } = req.body;
   try {
-    await pool.query(`
-      UPDATE employee_profiles
-      SET department_id=$1, phone=$2, address=$3, designation=$4, salary=$5
-      WHERE id=$6
-    `, [department_id, phone, address, designation, salary, id]);
+    const skillMap = {"1":"JavaScript","2":"TypeScript","3":"React","4":"Node.js","5":"Python","6":"Java","7":"C++","8":"SQL","9":"PostgreSQL","10":"MongoDB","11":"HTML","12":"CSS","13":"Git","14":"Docker","15":"AWS","16":"REST API","17":"GraphQL","18":"Redux","19":"Next.js","20":"Express.js","21":"Prisma","22":"Figma","23":"Photoshop","24":"Excel","25":"Communication","26":"Leadership","27":"Project Management","28":"Agile","29":"Scrum"}; const ids = skill_ids ? (Array.isArray(skill_ids) ? skill_ids : [skill_ids]) : []; const skillsArray = ids.map(id => skillMap[String(id)] || String(id));
+    const images = req.files ? req.files.map(f => f.filename) : [];
 
-    // Update skills - delete old and add new
-    await pool.query('DELETE FROM employee_skills WHERE employee_id = $1', [id]);
-    if (skill_ids && skill_ids.length > 0) {
-      for (const skill_id of skill_ids) {
-        await pool.query(
-          'INSERT INTO employee_skills (employee_id, skill_id) VALUES ($1, $2)',
-          [id, skill_id]
-        );
+    const updated = await prisma.employeeProfile.update({
+      where: { id: parseInt(req.params.id) },
+      data: {
+        departmentId: department_id ? parseInt(department_id) : null,
+        phone, address, designation,
+        salary: salary ? parseFloat(salary) : null,
+        skills: skillsArray,
+        ...(images.length > 0 && { profileImage: images[0] }),
       }
-    }
-
-    res.json({ message: 'Employee updated successfully!' });
+    });
+    res.json({ message: 'Employee updated!', profile: updated });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -148,53 +143,31 @@ router.put('/:id', auth, async (req, res) => {
 
 // DELETE employee
 router.delete('/:id', auth, async (req, res) => {
-  const { id } = req.params;
   try {
-    await pool.query('DELETE FROM employee_skills WHERE employee_id = $1', [id]);
-    await pool.query('DELETE FROM employee_images WHERE employee_id = $1', [id]);
-    await pool.query('DELETE FROM employee_profiles WHERE id = $1', [id]);
-    res.json({ message: 'Employee deleted successfully!' });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-});
-
-// POST upload images
-router.post('/upload/:id', auth, upload.array('images', 5), async (req, res) => {
-  const { id } = req.params;
-  try {
-    const imageUrls = [];
-    for (const file of req.files) {
-      const imageUrl = `/uploads/${file.filename}`;
-      await pool.query(
-        'INSERT INTO employee_images (employee_id, image_url) VALUES ($1, $2)',
-        [id, imageUrl]
-      );
-      imageUrls.push(imageUrl);
-    }
-    res.json({ message: 'Images uploaded!', images: imageUrls });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-});
-
-// GET dashboard stats
-router.get('/stats/dashboard', auth, async (req, res) => {
-  try {
-    const employees = await pool.query('SELECT COUNT(*) FROM employee_profiles');
-    const departments = await pool.query('SELECT COUNT(*) FROM departments');
-    const skills = await pool.query('SELECT COUNT(*) FROM skills');
-    const images = await pool.query('SELECT COUNT(*) FROM employee_images');
-
-    res.json({
-      totalEmployees: employees.rows[0].count,
-      totalDepartments: departments.rows[0].count,
-      totalSkills: skills.rows[0].count,
-      totalImages: images.rows[0].count
-    });
+    await prisma.employeeProfile.delete({ where: { id: parseInt(req.params.id) } });
+    res.json({ message: 'Employee deleted!' });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
 module.exports = router;
+
+// GET dashboard stats
+router.get('/stats/dashboard', auth, async (req, res) => {
+  try {
+    const [totalEmployees, totalDepartments, skillsData, imagesData] = await Promise.all([
+      prisma.employeeProfile.count(),
+      prisma.department.count(),
+      prisma.employeeProfile.findMany({ select: { skills: true } }),
+      prisma.employeeProfile.findMany({ select: { profileImage: true } }),
+    ]);
+
+    const totalSkills = [...new Set(skillsData.flatMap(e => e.skills))].length;
+    const totalImages = imagesData.filter(e => e.profileImage).length;
+
+    res.json({ totalEmployees, totalDepartments, totalSkills, totalImages });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});

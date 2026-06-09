@@ -7,25 +7,179 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model password_reset {
-  id         Int       @id @default(autoincrement())
-  user_id    Int?
-  token      String?
-  expires_at DateTime? @db.Timestamp(6)
+model User {
+  id                Int                @id @default(autoincrement())
+  name              String
+  email             String             @unique
+  password          String
+  role              String             @default("employee")
+  isVerified        Boolean            @default(false)
+  verificationToken String?
+  resetToken        String?
+  resetTokenExpiry  DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  refreshTokens     RefreshToken[]
+  employeeProfile   EmployeeProfile?
+  leaveRequests     LeaveRequest[]
+  leaveApprovals    LeaveApproval[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  allocatedAssets   AssetAllocation[]  @relation("AllocatedTo")
+  allocatedByAssets AssetAllocation[]  @relation("AllocatedBy")
+  assetHistory      AssetHistory[]
 }
 
-model refresh_tokens {
-  id         Int       @id @default(autoincrement())
-  user_id    Int?
-  token      String?
-  created_at DateTime? @default(now()) @db.Timestamp(6)
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model users {
-  id       Int      @id @default(autoincrement())
-  name     String?  @db.VarChar(100)
-  email    String?  @unique @db.VarChar(100)
-  password String?  @db.VarChar(255)
-  verified Boolean? @default(false)
-  role     String?  @default("user") @db.VarChar(20)
+model Department {
+  id             Int               @id @default(autoincrement())
+  departmentName String            @unique
+  createdAt      DateTime          @default(now())
+
+  employeeProfiles EmployeeProfile[]
+}
+
+model EmployeeProfile {
+  id           Int        @id @default(autoincrement())
+  userId       Int        @unique
+  departmentId Int?
+  designation  String?
+  phone        String?
+  address      String?
+  skills       String[]
+  profileImage String?
+  salary       Float?
+  joiningDate  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department   Department? @relation(fields: [departmentId], references: [id])
+}
+
+model LeaveType {
+  id            Int            @id @default(autoincrement())
+  name          String         @unique
+  maxDays       Int
+  createdAt     DateTime       @default(now())
+
+  leaveRequests LeaveRequest[]
+}
+
+model LeaveRequest {
+  id          Int             @id @default(autoincrement())
+  userId      Int
+  leaveTypeId Int
+  startDate   DateTime
+  endDate     DateTime
+  days        Int
+  reason      String
+  status      String          @default("pending")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leaveType   LeaveType       @relation(fields: [leaveTypeId], references: [id])
+  approvals   LeaveApproval[]
+}
+
+model LeaveApproval {
+  id             Int          @id @default(autoincrement())
+  leaveRequestId Int
+  approverId     Int
+  approverRole   String
+  status         String
+  comments       String?
+  createdAt      DateTime     @default(now())
+
+  leaveRequest   LeaveRequest @relation(fields: [leaveRequestId], references: [id], onDelete: Cascade)
+  approver       User         @relation(fields: [approverId], references: [id])
+}
+
+model LeaveBalance {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  leaveTypeId Int
+  year        Int
+  totalDays   Int
+  usedDays    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── NEW TABLES ───────────────────────────────────────────
+
+model Asset {
+  id           Int               @id @default(autoincrement())
+  assetCode    String            @unique
+  assetName    String
+  assetType    String
+  purchaseDate DateTime?
+  purchaseCost Float?
+  status       String            @default("available") // available | allocated | returned | damaged | lost
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  allocations  AssetAllocation[]
+  history      AssetHistory[]
+}
+
+model AssetAllocation {
+  id            Int       @id @default(autoincrement())
+  assetId       Int
+  employeeId    Int
+  allocatedById Int
+  allocatedDate DateTime  @default(now())
+  returnDate    DateTime?
+  status        String    @default("allocated") // allocated | returned
+
+  asset         Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  employee      User      @relation("AllocatedTo", fields: [employeeId], references: [id])
+  allocatedBy   User      @relation("AllocatedBy", fields: [allocatedById], references: [id])
+}
+
+model AssetHistory {
+  id          Int      @id @default(autoincrement())
+  assetId     Int
+  action      String
+  remarks     String?
+  createdById Int
+  createdAt   DateTime @default(now())
+
+  asset       Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  createdBy   User     @relation(fields: [createdById], references: [id])
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  tableName   String
+  actionType  String   // CREATE | UPDATE | DELETE
+  recordId    Int
+  oldData     Json?
+  newData     Json?
+  performedBy Int
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [performedBy], references: [id])
 }

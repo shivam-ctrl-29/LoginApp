@@ -13,6 +13,10 @@ const departmentRoutes = require('./routes/departments');
 const skillRoutes = require('./routes/skills');
 const employeeRoutes = require('./routes/employees');
 const leaveRoutes = require('./routes/leave');
+const errorHandler = require('./src/middleware/errorHandler');
+const assetRoutes = require('./src/routes/assetRoutes');
+const notificationRoutes = require('./src/routes/notificationRoutes');
+const auditRoutes = require('./src/routes/auditRoutes');
 
 const app = express();
 
@@ -47,6 +51,10 @@ app.use('/api/departments', departmentRoutes);
 app.use('/api/skills', skillRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/leave', leaveRoutes);
+app.use('/api/assets', assetRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/audit', auditRoutes);
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
