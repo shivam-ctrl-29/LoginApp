@@ -21,8 +21,9 @@ app.use(helmet());
 
 // Rate limiting
 const limiter = rateLimit({
+  validate: {xForwardedForHeader: false},
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100
+  max: 500
 });
 app.use(limiter);
 
@@ -33,7 +34,10 @@ app.use(cors({
 }));
 
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);

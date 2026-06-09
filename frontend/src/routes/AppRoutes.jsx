@@ -13,6 +13,7 @@ import ApplyLeave from '../pages/ApplyLeave';
 import MyLeaves from '../pages/MyLeaves';
 import LeaveApproval from '../pages/LeaveApproval';
 import ProtectedRoute from './ProtectedRoute';
+import EditEmployee from '../pages/EditEmployee';
 
 function AppRoutes() {
   return (
@@ -25,7 +26,8 @@ function AppRoutes() {
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
       <Route path="/employees" element={<ProtectedRoute><EmployeeList /></ProtectedRoute>} />
-      <Route path="/employees/create" element={<ProtectedRoute><CreateEmployee /></ProtectedRoute>} />
+      <Route path="/employees/edit/:id" element={<ProtectedRoute><EditEmployee /></ProtectedRoute>} />
+        <Route path="/employees/create" element={<ProtectedRoute><CreateEmployee /></ProtectedRoute>} />
       <Route path="/leave/apply" element={<ProtectedRoute><ApplyLeave /></ProtectedRoute>} />
       <Route path="/leave/my" element={<ProtectedRoute><MyLeaves /></ProtectedRoute>} />
       <Route path="/leave/approval" element={<ProtectedRoute><LeaveApproval /></ProtectedRoute>} />

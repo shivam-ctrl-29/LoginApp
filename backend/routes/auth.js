@@ -27,19 +27,8 @@ router.post('/signup', async (req, res) => {
       'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id',
       [name, email, hashedPassword]
     );
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    await pool.query(
-      'INSERT INTO password_reset ("userId", token, "expiresAt") VALUES ($1, $2, $3)',
-      [newUser.rows[0].id, token, expiresAt]
-    );
-    const verifyLink = `${FRONTEND_URL}/verify-email/${token}`;
-    await sendEmail(email, 'Verify Your Email', `
-      <h2>Welcome ${name}!</h2>
-      <p>Please verify your email by clicking the link below.</p>
-      <a href="${verifyLink}">Verify Email</a>
-    `);
-    res.status(201).json({ message: 'Registered! Please check your email to verify your account.' });
+    await pool.query('UPDATE users SET verified = true WHERE id = $1', [newUser.rows[0].id]);
+    res.status(201).json({ message: 'Account created successfully!' });
   } catch (error) {
     console.error('SIGNUP ERROR:', error.message);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -73,7 +62,6 @@ router.post('/login', async (req, res) => {
     const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     const user = result.rows[0];
     if (!user) return res.status(400).json({ message: 'User not found' });
-    if (!user.verified) return res.status(400).json({ message: 'Please verify your email before logging in!' });
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: 'Wrong password' });
     const accessToken = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '15m' });
