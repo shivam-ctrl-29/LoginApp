@@ -2,57 +2,51 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 const findAllAssets = async ({ search, status, page, limit }) => {
-  const where = {
-    ...(status && { status }),
-    ...(search && {
-      OR: [
-        { assetName: { contains: search, mode: 'insensitive' } },
-        { assetCode: { contains: search, mode: 'insensitive' } },
-        { assetType: { contains: search, mode: 'insensitive' } },
-      ],
-    }),
-  };
-
+  const where = {};
+  if (status) where.status = status;
+  if (search) {
+    where.OR = [
+      { assetName: { contains: search, mode: 'insensitive' } },
+      { assetCode: { contains: search, mode: 'insensitive' } },
+      { assetType: { contains: search, mode: 'insensitive' } },
+    ];
+  }
   const [assets, total] = await Promise.all([
-    prisma.asset.findMany({
-      where,
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        allocations: {
-          where: { status: 'allocated' },
-          include: { employee: { select: { id: true, name: true, email: true } } },
-        },
-      },
-    }),
+    prisma.asset.findMany({ where, skip: (page - 1) * limit, take: limit, orderBy: { createdAt: 'desc' }, include: { allocations: { include: { employee: { select: { id: true, name: true } } } } } }),
     prisma.asset.count({ where }),
   ]);
-
-  return { assets, total };
+  return { assets, total, page, limit };
 };
 
 const findAssetById = async (id) => {
-  return prisma.asset.findUnique({
-    where: { id },
-    include: {
-      allocations: {
-        include: { employee: { select: { id: true, name: true, email: true } } },
-      },
-      history: {
-        include: { createdBy: { select: { id: true, name: true } } },
-        orderBy: { createdAt: 'desc' },
-      },
-    },
-  });
+  return prisma.asset.findUnique({ where: { id }, include: { allocations: true, history: true } });
 };
 
 const createAsset = async (data) => {
-  return prisma.asset.create({ data });
+  return prisma.asset.create({
+    data: {
+      assetCode: data.assetCode,
+      assetName: data.assetName,
+      assetType: data.assetType,
+      status: data.status || 'available',
+      purchaseCost: data.purchaseCost ? parseFloat(data.purchaseCost) : null,
+      purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : null,
+    }
+  });
 };
 
 const updateAsset = async (id, data) => {
-  return prisma.asset.update({ where: { id }, data });
+  return prisma.asset.update({
+    where: { id },
+    data: {
+      assetCode: data.assetCode,
+      assetName: data.assetName,
+      assetType: data.assetType,
+      status: data.status,
+      purchaseCost: data.purchaseCost ? parseFloat(data.purchaseCost) : null,
+      purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : null,
+    }
+  });
 };
 
 const deleteAsset = async (id) => {
@@ -64,21 +58,10 @@ const allocateAsset = async ({ assetId, employeeId, allocatedById }) => {
     const allocation = await tx.assetAllocation.create({
       data: { assetId, employeeId, allocatedById, status: 'allocated' },
     });
-
-    await tx.asset.update({
-      where: { id: assetId },
-      data: { status: 'allocated' },
-    });
-
+    await tx.asset.update({ where: { id: assetId }, data: { status: 'allocated' } });
     await tx.assetHistory.create({
-      data: {
-        assetId,
-        action: 'ALLOCATED',
-        remarks: `Allocated to employee ID ${employeeId}`,
-        createdById: allocatedById,
-      },
+      data: { assetId, action: 'ALLOCATED', remarks: 'Allocated to employee ID ' + employeeId, createdById: allocatedById },
     });
-
     return allocation;
   });
 };
@@ -89,19 +72,9 @@ const returnAsset = async ({ assetId, employeeId, returnedById }) => {
       where: { assetId, employeeId, status: 'allocated' },
       data: { status: 'returned', returnDate: new Date() },
     });
-
-    await tx.asset.update({
-      where: { id: assetId },
-      data: { status: 'available' },
-    });
-
+    await tx.asset.update({ where: { id: assetId }, data: { status: 'available' } });
     await tx.assetHistory.create({
-      data: {
-        assetId,
-        action: 'RETURNED',
-        remarks: `Returned by employee ID ${employeeId}`,
-        createdById: returnedById,
-      },
+      data: { assetId, action: 'RETURNED', remarks: 'Returned by employee ID ' + employeeId, createdById: returnedById },
     });
   });
 };

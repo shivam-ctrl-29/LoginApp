@@ -150,3 +150,19 @@ router.get('/stats', auth, async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
+
+// GET leave type breakdown
+router.get('/stats/by-type', auth, async (req, res) => {
+  try {
+    const types = await prisma.leaveType.findMany({
+      include: { leaveRequests: true },
+    });
+    const data = types.map(t => ({
+      name: t.name,
+      value: t.leaveRequests.length,
+    }));
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});

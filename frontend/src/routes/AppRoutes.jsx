@@ -14,6 +14,9 @@ import MyLeaves from '../pages/MyLeaves';
 import LeaveApproval from '../pages/LeaveApproval';
 import ProtectedRoute from './ProtectedRoute';
 import EditEmployee from '../pages/EditEmployee';
+import Assets from '../pages/Assets';
+import Reports from '../pages/Reports';
+import AddAsset from '../pages/AddAsset';
 
 function AppRoutes() {
   return (
@@ -27,10 +30,14 @@ function AppRoutes() {
       <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
       <Route path="/employees" element={<ProtectedRoute><EmployeeList /></ProtectedRoute>} />
       <Route path="/employees/edit/:id" element={<ProtectedRoute><EditEmployee /></ProtectedRoute>} />
-        <Route path="/employees/create" element={<ProtectedRoute><CreateEmployee /></ProtectedRoute>} />
+      <Route path="/employees/create" element={<ProtectedRoute><CreateEmployee /></ProtectedRoute>} />
       <Route path="/leave/apply" element={<ProtectedRoute><ApplyLeave /></ProtectedRoute>} />
       <Route path="/leave/my" element={<ProtectedRoute><MyLeaves /></ProtectedRoute>} />
       <Route path="/leave/approval" element={<ProtectedRoute><LeaveApproval /></ProtectedRoute>} />
+      <Route path="/assets" element={<ProtectedRoute><Assets /></ProtectedRoute>} />
+      <Route path="/assets/add" element={<ProtectedRoute><AddAsset /></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+      <Route path="/assets/edit/:id" element={<ProtectedRoute><AddAsset /></ProtectedRoute>} />
     </Routes>
   );
 }

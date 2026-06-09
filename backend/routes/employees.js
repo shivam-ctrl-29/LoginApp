@@ -151,7 +151,6 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-module.exports = router;
 
 // GET dashboard stats
 router.get('/stats/dashboard', auth, async (req, res) => {
@@ -171,3 +170,76 @@ router.get('/stats/dashboard', auth, async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
+
+// GET department-wise employee count
+router.get('/stats/by-department', auth, async (req, res) => {
+  try {
+    const departments = await prisma.department.findMany({
+      include: { employeeProfiles: true },
+    });
+    const data = departments.map(d => ({
+      department: d.departmentName,
+      employees: d.employeeProfiles.length,
+    }));
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// GET monthly joining trend
+router.get('/stats/monthly-joining', auth, async (req, res) => {
+  try {
+    const profiles = await prisma.employeeProfile.findMany({
+      select: { createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    const monthMap = {};
+    profiles.forEach(p => {
+      const key = p.createdAt.toISOString().slice(0, 7);
+      monthMap[key] = (monthMap[key] || 0) + 1;
+    });
+    const data = Object.entries(monthMap).map(([month, count]) => ({ month, count }));
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// GET global search
+router.get('/search/global', auth, async (req, res) => {
+  const { q } = req.query;
+  if (!q || q.trim().length < 2) return res.json([]);
+  try {
+    const profiles = await prisma.employeeProfile.findMany({
+      where: {
+        OR: [
+          { user: { name: { contains: q, mode: 'insensitive' } } },
+          { user: { email: { contains: q, mode: 'insensitive' } } },
+          { department: { departmentName: { contains: q, mode: 'insensitive' } } },
+          { designation: { contains: q, mode: 'insensitive' } },
+          { skills: { has: q } },
+        ],
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true, role: true } },
+        department: true,
+      },
+      take: 10,
+    });
+    const results = profiles.map(p => ({
+      id: p.id,
+      name: p.user?.name,
+      email: p.user?.email,
+      role: p.user?.role,
+      designation: p.designation,
+      department: p.department?.departmentName,
+      skills: p.skills,
+    }));
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+module.exports = router;
