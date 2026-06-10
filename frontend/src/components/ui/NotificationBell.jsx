@@ -15,7 +15,7 @@ function NotificationBell() {
 
   const fetchNotifications = async () => {
     try {
-      const res = await axios.get(API_URL + '/api/notifications', { headers });
+      const res = await axios.get(API_URL + '/api/v1/notifications', { headers });
       const list = Array.isArray(res.data) ? res.data : (res.data.notifications || []);
       setNotifications(list);
       setUnread(list.filter(n => !n.isRead).length);
@@ -35,17 +35,17 @@ function NotificationBell() {
   }, []);
 
   const markAsRead = async (id) => {
-    try { await axios.put(API_URL + '/api/notifications/' + id + '/read', {}, { headers }); fetchNotifications(); }
+    try { await axios.put(API_URL + '/api/v1/notifications/' + id + '/read', {}, { headers }); fetchNotifications(); }
     catch (err) { console.error(err); }
   };
 
   const markAllRead = async () => {
-    try { await axios.put(API_URL + '/api/notifications/read-all', {}, { headers }); fetchNotifications(); }
+    try { await axios.put(API_URL + '/api/v1/notifications/read-all', {}, { headers }); fetchNotifications(); }
     catch (err) { console.error(err); }
   };
 
   const deleteNotif = async (id) => {
-    try { await axios.delete(API_URL + '/api/notifications/' + id, { headers }); fetchNotifications(); }
+    try { await axios.delete(API_URL + '/api/v1/notifications/' + id, { headers }); fetchNotifications(); }
     catch (err) { console.error(err); }
   };
 

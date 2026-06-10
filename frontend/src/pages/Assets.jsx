@@ -26,7 +26,7 @@ function Assets() {
 
   const fetchAssets = async () => {
     try {
-      const res = await axios.get(API_URL + '/api/assets', { headers });
+      const res = await axios.get(API_URL + '/api/v1/assets', { headers });
       const list = Array.isArray(res.data) ? res.data : (res.data.assets || []);
       setAssets(list);
     } catch (err) { console.error(err); }
@@ -35,7 +35,7 @@ function Assets() {
 
   const fetchEmployees = async () => {
     try {
-      const res = await axios.get(API_URL + '/api/employees', { headers });
+      const res = await axios.get(API_URL + '/api/v1/employees', { headers });
       setEmployees(res.data || []);
     } catch (err) { console.error(err); }
   };
@@ -46,7 +46,7 @@ function Assets() {
     if (!selectedEmployee) return setMsg('Please select an employee');
     setActionLoading(true);
     try {
-      await axios.post(API_URL + '/api/assets/allocate', { assetId: modal.asset.id, employeeId: parseInt(selectedEmployee) }, { headers });
+      await axios.post(API_URL + '/api/v1/assets/allocate', { assetId: modal.asset.id, employeeId: parseInt(selectedEmployee) }, { headers });
       setMsg('Asset allocated successfully!');
       setModal(null);
       fetchAssets();
@@ -58,7 +58,7 @@ function Assets() {
     if (!selectedEmployee) return setMsg('Please select the employee');
     setActionLoading(true);
     try {
-      await axios.post(API_URL + '/api/assets/return', { assetId: modal.asset.id, employeeId: parseInt(selectedEmployee) }, { headers });
+      await axios.post(API_URL + '/api/v1/assets/return', { assetId: modal.asset.id, employeeId: parseInt(selectedEmployee) }, { headers });
       setMsg('Asset returned successfully!');
       setModal(null);
       fetchAssets();
@@ -69,7 +69,7 @@ function Assets() {
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this asset?')) return;
     try {
-      await axios.delete(API_URL + '/api/assets/' + id, { headers });
+      await axios.delete(API_URL + '/api/v1/assets/' + id, { headers });
       fetchAssets();
     } catch (err) { alert(err.response?.data?.message || 'Error deleting asset'); }
   };

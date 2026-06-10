@@ -62,12 +62,12 @@ function Dashboard() {
       const headers = { Authorization: token };
       try {
         const [empStats, lvStats, deptStats, monthly, leaveTypes, assets] = await Promise.all([
-          axios.get(`${API_URL}/api/employees/stats/dashboard`, { headers }),
-          axios.get(`${API_URL}/api/leave/stats`, { headers }),
-          axios.get(`${API_URL}/api/employees/stats/by-department`, { headers }),
-          axios.get(`${API_URL}/api/employees/stats/monthly-joining`, { headers }),
-          axios.get(`${API_URL}/api/leave/stats/by-type`, { headers }),
-          axios.get(`${API_URL}/api/assets`, { headers }).catch(() => ({ data: [] })),
+          axios.get(`${API_URL}/api/v1/employees/stats/dashboard`, { headers }),
+          axios.get(`${API_URL}/api/v1/leave/stats`, { headers }),
+          axios.get(`${API_URL}/api/v1/employees/stats/by-department`, { headers }),
+          axios.get(`${API_URL}/api/v1/employees/stats/monthly-joining`, { headers }),
+          axios.get(`${API_URL}/api/v1/leave/stats/by-type`, { headers }),
+          axios.get(`${API_URL}/api/v1/assets`, { headers }).catch(() => ({ data: [] })),
         ]);
         setStats(empStats.data);
         setLeaveStats(lvStats.data);

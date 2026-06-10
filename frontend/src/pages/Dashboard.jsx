@@ -36,10 +36,10 @@ function Dashboard() {
       const token = localStorage.getItem('token');
       try {
         const [empStats, lvStats] = await Promise.all([
-          axios.get(`${API_URL}/api/employees/stats/dashboard`, {
+          axios.get(`${API_URL}/api/v1/employees/stats/dashboard`, {
             headers: { Authorization: token },
           }),
-          axios.get(`${API_URL}/api/leave/stats`, {
+          axios.get(`${API_URL}/api/v1/leave/stats`, {
             headers: { Authorization: token },
           }),
         ]);

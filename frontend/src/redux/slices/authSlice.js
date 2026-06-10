@@ -7,7 +7,7 @@ export const fetchUser = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await axios.get(`${API_URL}/api/user/profile`, {
+      const res = await axios.get(`${API_URL}/api/v1/user/profile`, {
         headers: { Authorization: token }
       });
       return res.data;

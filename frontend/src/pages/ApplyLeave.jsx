@@ -34,8 +34,8 @@ function ApplyLeave() {
     const token = getToken();
     try {
       const [typesRes, balanceRes] = await Promise.all([
-        axios.get(`${API_URL}/api/leave/types`),
-        axios.get(`${API_URL}/api/leave/balance`, { headers: { Authorization: token } }),
+        axios.get(`${API_URL}/api/v1/leave/types`),
+        axios.get(`${API_URL}/api/v1/leave/balance`, { headers: { Authorization: token } }),
       ]);
       setLeaveTypes(typesRes.data);
       setBalance(balanceRes.data);
@@ -65,7 +65,7 @@ function ApplyLeave() {
     setLoading(true);
     const token = getToken();
     try {
-      await axios.post(`${API_URL}/api/leave/apply`, form, {
+      await axios.post(`${API_URL}/api/v1/leave/apply`, form, {
         headers: { Authorization: token },
       });
       toast.success('Leave application submitted successfully!');

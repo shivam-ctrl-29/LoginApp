@@ -17,8 +17,10 @@ function Reports() {
   const headers = { Authorization: token };
 
   const fetchEmployees = async () => {
-    const res = await axios.get(API_URL + '/api/employees', { headers });
-    return (res.data || []).map(e => ({
+    const res = await axios.get(API_URL + '/api/v1/v1/employees?limit=1000', { headers });
+    const data = res.data;
+    const list = Array.isArray(data) ? data : (data.employees || []);
+    return list.map(e => ({
       Name: e.name || '',
       Email: e.email || '',
       Role: e.role || '',
@@ -31,8 +33,9 @@ function Reports() {
   };
 
   const fetchLeaves = async () => {
-    const res = await axios.get(API_URL + '/api/leave/all', { headers });
-    return (res.data || []).map(l => ({
+    const res = await axios.get(API_URL + '/api/v1/v1/leave/all', { headers });
+    const list = Array.isArray(res.data) ? res.data : (res.data?.leaves || []);
+    return list.map(l => ({
       Employee: l.employee_name || '',
       Type: l.leave_name || '',
       From: l.from_date ? new Date(l.from_date).toLocaleDateString() : '',
@@ -44,7 +47,7 @@ function Reports() {
   };
 
   const fetchAssets = async () => {
-    const res = await axios.get(API_URL + '/api/assets?limit=100', { headers });
+    const res = await axios.get(API_URL + '/api/v1/v1/assets?limit=1000', { headers });
     const list = Array.isArray(res.data) ? res.data : (res.data?.assets || []);
     return list.map(a => ({
       Code: a.assetCode || '',

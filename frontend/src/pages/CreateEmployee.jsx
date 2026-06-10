@@ -35,8 +35,8 @@ function CreateEmployee() {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    axios.get(`${API_URL}/api/departments`, { headers: { Authorization: token } }).then(res => setDepartments(res.data)).catch(console.error);
-    axios.get(`${API_URL}/api/skills`).then(res => setSkills(res.data)).catch(console.error);
+    axios.get(`${API_URL}/api/v1/departments`, { headers: { Authorization: token } }).then(res => setDepartments(res.data)).catch(console.error);
+    axios.get(`${API_URL}/api/v1/skills`).then(res => setSkills(res.data)).catch(console.error);
   }, []);
 
   const updateForm = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
@@ -71,7 +71,7 @@ function CreateEmployee() {
     setLoading(true);
     const token = localStorage.getItem('token');
     try {
-      const res = await axios.post(`${API_URL}/api/employees`, {
+      const res = await axios.post(`${API_URL}/api/v1/employees`, {
         ...form,
         skill_ids: selectedSkills,
       }, { headers: { Authorization: token } });
@@ -81,7 +81,7 @@ function CreateEmployee() {
       if (images.length > 0) {
         const formData = new FormData();
         images.forEach(img => formData.append('images', img));
-        await axios.post(`${API_URL}/api/employees/upload/${employeeId}`, formData, {
+        await axios.post(`${API_URL}/api/v1/employees/upload/${employeeId}`, formData, {
           headers: { Authorization: token, 'Content-Type': 'multipart/form-data' },
         });
       }

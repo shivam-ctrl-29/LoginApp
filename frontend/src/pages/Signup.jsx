@@ -26,7 +26,7 @@ function Signup() {
     }
     setLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/api/auth/signup`, { name, email, password });
+      const res = await axios.post(`${API_URL}/api/v1/auth/signup`, { name, email, password });
       toast.success(res.data.message || 'Account created successfully!');
       setTimeout(() => navigate('/'), 1200);
     } catch (err) {

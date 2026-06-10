@@ -13,7 +13,7 @@ const useAuth = () => {
   const handleLogout = async () => {
     const refreshToken = localStorage.getItem('refreshToken');
     try {
-      await axios.post(`${API_URL}/api/auth/logout`, { refreshToken });
+      await axios.post(`${API_URL}/api/v1/auth/logout`, { refreshToken });
     } catch (err) {
       console.log('Logout error:', err);
     }

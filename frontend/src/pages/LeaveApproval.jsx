@@ -35,7 +35,7 @@ function LeaveApproval() {
   const fetchLeaves = async () => {
     const token = getToken();
     try {
-      const res = await axios.get(`${API_URL}/api/leave/all`, {
+      const res = await axios.get(`${API_URL}/api/v1/leave/all`, {
         headers: { Authorization: token },
       });
       setLeaves(res.data);
@@ -50,7 +50,7 @@ function LeaveApproval() {
     setActionLoading(id);
     const token = getToken();
     try {
-      await axios.put(`${API_URL}/api/leave/action/${id}`,
+      await axios.put(`${API_URL}/api/v1/leave/action/${id}`,
         { action, remarks: remarks[id] || '' },
         { headers: { Authorization: token } }
       );

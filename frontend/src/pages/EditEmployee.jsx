@@ -35,9 +35,9 @@ function EditEmployee() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     Promise.all([
-      axios.get(`${API_URL}/api/departments`),
-      axios.get(`${API_URL}/api/skills`),
-      axios.get(`${API_URL}/api/employees/${id}`, { headers: { Authorization: token } }),
+      axios.get(`${API_URL}/api/v1/departments`),
+      axios.get(`${API_URL}/api/v1/skills`),
+      axios.get(`${API_URL}/api/v1/employees/${id}`, { headers: { Authorization: token } }),
     ]).then(([deptRes, skillRes, empRes]) => {
       setDepartments(deptRes.data);
       setSkills(skillRes.data);
@@ -82,7 +82,7 @@ function EditEmployee() {
     setLoading(true);
     const token = localStorage.getItem('token');
     try {
-      await axios.put(`${API_URL}/api/employees/${id}`, {
+      await axios.put(`${API_URL}/api/v1/employees/${id}`, {
         ...form,
         skill_ids: selectedSkills,
       }, { headers: { Authorization: token } });
@@ -90,7 +90,7 @@ function EditEmployee() {
       if (images.length > 0) {
         const formData = new FormData();
         images.forEach(img => formData.append('images', img));
-        await axios.post(`${API_URL}/api/employees/upload/${id}`, formData, {
+        await axios.post(`${API_URL}/api/v1/employees/upload/${id}`, formData, {
           headers: { Authorization: token, 'Content-Type': 'multipart/form-data' },
         });
       }

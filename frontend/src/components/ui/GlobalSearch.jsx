@@ -26,7 +26,7 @@ function GlobalSearch() {
     const timeout = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await axios.get(API_URL + '/api/employees/search/global?q=' + encodeURIComponent(query), { headers: { Authorization: token } });
+        const res = await axios.get(API_URL + '/api/v1/employees/search/global?q=' + encodeURIComponent(query), { headers: { Authorization: token } });
         setResults(res.data || []);
         setOpen(true);
       } catch (err) { console.error(err); }

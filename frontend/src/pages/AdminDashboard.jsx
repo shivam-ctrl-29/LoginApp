@@ -26,7 +26,7 @@ function AdminDashboard() {
   const fetchUsers = useCallback(async () => {
     const token = localStorage.getItem('token');
     try {
-      const res = await axios.get(`${API_URL}/api/admin/users`, {
+      const res = await axios.get(`${API_URL}/api/v1/admin/users`, {
         headers: { Authorization: token },
       });
       setUsers(res.data);
@@ -50,7 +50,7 @@ function AdminDashboard() {
   const handleDelete = async () => {
     const token = localStorage.getItem('token');
     try {
-      await axios.delete(`${API_URL}/api/admin/users/${deleteId}`, {
+      await axios.delete(`${API_URL}/api/v1/admin/users/${deleteId}`, {
         headers: { Authorization: token },
       });
       toast.success('User deleted successfully');

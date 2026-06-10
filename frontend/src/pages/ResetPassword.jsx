@@ -19,7 +19,7 @@ function ResetPassword() {
     e?.preventDefault();
     setLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/api/auth/reset-password/${token}`, { password });
+      const res = await axios.post(`${API_URL}/api/v1/auth/reset-password/${token}`, { password });
       toast.success(res.data.message || 'Password reset successfully');
       setTimeout(() => navigate('/'), 1500);
     } catch (err) {

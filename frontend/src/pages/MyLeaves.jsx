@@ -28,7 +28,7 @@ function MyLeaves() {
   const fetchLeaves = async () => {
     const token = getToken();
     try {
-      const res = await axios.get(`${API_URL}/api/leave/my`, {
+      const res = await axios.get(`${API_URL}/api/v1/leave/my`, {
         headers: { Authorization: token },
       });
       setLeaves(res.data);

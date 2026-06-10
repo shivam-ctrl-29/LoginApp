@@ -23,7 +23,7 @@ function AddAsset() {
 
   useEffect(() => {
     if (isEdit) {
-      axios.get(API_URL + '/api/assets/' + id, { headers })
+      axios.get(API_URL + '/api/v1/assets/' + id, { headers })
         .then(res => {
           const a = res.data.asset || res.data;
           setForm({ assetCode: a.assetCode || '', assetName: a.assetName || '', assetType: a.assetType || '', purchaseDate: a.purchaseDate ? a.purchaseDate.slice(0, 10) : '', purchaseCost: a.purchaseCost || '', status: a.status || 'available' });
@@ -40,8 +40,8 @@ function AddAsset() {
     setLoading(true);
     try {
       const payload = { ...form, purchaseCost: form.purchaseCost ? parseFloat(form.purchaseCost) : null, purchaseDate: form.purchaseDate || null };
-      if (isEdit) { await axios.put(API_URL + '/api/assets/' + id, payload, { headers }); }
-      else { await axios.post(API_URL + '/api/assets', payload, { headers }); }
+      if (isEdit) { await axios.put(API_URL + '/api/v1/assets/' + id, payload, { headers }); }
+      else { await axios.post(API_URL + '/api/v1/assets', payload, { headers }); }
       navigate('/assets');
     } catch (err) {
       setError(err.response?.data?.message || 'Server error');

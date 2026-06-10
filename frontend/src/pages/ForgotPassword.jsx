@@ -20,7 +20,7 @@ function ForgotPassword() {
     e?.preventDefault();
     setLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/api/auth/forgot-password`, { email });
+      const res = await axios.post(`${API_URL}/api/v1/auth/forgot-password`, { email });
       toast.success(res.data.message || 'Reset link sent to your email');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Something went wrong');

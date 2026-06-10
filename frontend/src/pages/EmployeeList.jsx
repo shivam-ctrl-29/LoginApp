@@ -27,10 +27,11 @@ function EmployeeList() {
   const fetchEmployees = async () => {
     const token = localStorage.getItem('token');
     try {
-      const res = await axios.get(`${API_URL}/api/employees`, {
+      const res = await axios.get(`${API_URL}/api/v1/v1/employees`, {
         headers: { Authorization: token },
       });
-      setEmployees(res.data);
+      const data = res.data;
+      setEmployees(Array.isArray(data) ? data : (data.employees || []));
     } catch (err) {
       toast.error('Failed to load employees');
     } finally {
@@ -41,7 +42,7 @@ function EmployeeList() {
   const handleDelete = async () => {
     const token = localStorage.getItem('token');
     try {
-      await axios.delete(`${API_URL}/api/employees/${deleteId}`, {
+      await axios.delete(`${API_URL}/api/v1/v1/employees/${deleteId}`, {
         headers: { Authorization: token },
       });
       toast.success('Employee deleted successfully');
