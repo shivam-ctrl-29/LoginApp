@@ -73,7 +73,7 @@ function Dashboard() {
       } catch (err) {
         console.error(err);
       } finally {
-        setStatsLoading(false);
+        
       }
     };
     fetchStats();
