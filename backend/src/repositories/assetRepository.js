@@ -1,9 +1,10 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-const findAllAssets = async ({ search, status, page, limit }) => {
+const findAllAssets = async ({ search, status, assetType, page, limit, sortBy, sortOrder }) => {
   const where = {};
   if (status) where.status = status;
+  if (assetType) where.assetType = assetType;
   if (search) {
     where.OR = [
       { assetName: { contains: search, mode: 'insensitive' } },
@@ -11,11 +12,27 @@ const findAllAssets = async ({ search, status, page, limit }) => {
       { assetType: { contains: search, mode: 'insensitive' } },
     ];
   }
+
+  // Sorting
+  const validSortFields = ['createdAt', 'assetName', 'assetType', 'purchaseCost', 'status'];
+  const orderField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+  const orderDir = sortOrder === 'asc' ? 'asc' : 'desc';
+
   const [assets, total] = await Promise.all([
-    prisma.asset.findMany({ where, skip: (page - 1) * limit, take: limit, orderBy: { createdAt: 'desc' }, include: { allocations: { include: { employee: { select: { id: true, name: true } } } } } }),
+    prisma.asset.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { [orderField]: orderDir },
+      include: {
+        allocations: {
+          include: { employee: { select: { id: true, name: true } } }
+        }
+      }
+    }),
     prisma.asset.count({ where }),
   ]);
-  return { assets, total, page, limit };
+  return { assets, total, page, limit, totalPages: Math.ceil(total / limit) };
 };
 
 const findAssetById = async (id) => {

@@ -6,21 +6,21 @@ const auth = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const validate = require('../src/middleware/validate');
+const { createEmployeeSchema, updateEmployeeSchema } = require('../src/validators/employee.validator');
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => { cb(null, 'uploads/'); },
+  destination: (req, file, cb) => { cb(null, 'uploads/employees/'); },
   filename: (req, file, cb) => { cb(null, Date.now() + path.extname(file.originalname)); }
 });
 const upload = multer({ storage, limits: { files: 5 } });
 
 // POST create employee
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, validate(createEmployeeSchema), async (req, res) => {
   const { name, email, password, role, department_id, phone, address, designation, salary, skill_ids } = req.body;
   try {
     let userId;
-
     if (email) {
-      // Create new user account
       let user = await prisma.user.findUnique({ where: { email } });
       if (!user) {
         const hashed = await bcrypt.hash(password || 'Password@123', 10);
@@ -30,31 +30,19 @@ router.post('/', auth, async (req, res) => {
       }
       userId = user.id;
     } else {
-      // Use logged in user
       userId = req.user.id;
     }
-
     const existing = await prisma.employeeProfile.findUnique({ where: { userId } });
     if (existing) return res.status(400).json({ message: 'Employee profile already exists for this user' });
 
-    const skillMap = {"1":"JavaScript","2":"TypeScript","3":"React","4":"Node.js","5":"Python","6":"Java","7":"C++","8":"SQL","9":"PostgreSQL","10":"MongoDB","11":"HTML","12":"CSS","13":"Git","14":"Docker","15":"AWS","16":"REST API","17":"GraphQL","18":"Redux","19":"Next.js","20":"Express.js","21":"Prisma","22":"Figma","23":"Photoshop","24":"Excel","25":"Communication","26":"Leadership","27":"Project Management","28":"Agile","29":"Scrum"}; const ids = skill_ids ? (Array.isArray(skill_ids) ? skill_ids : [skill_ids]) : []; const skillsArray = ids.map(id => skillMap[String(id)] || String(id));
+    const skillMap = {"1":"JavaScript","2":"TypeScript","3":"React","4":"Node.js","5":"Python","6":"Java","7":"C++","8":"SQL","9":"PostgreSQL","10":"MongoDB","11":"HTML","12":"CSS","13":"Git","14":"Docker","15":"AWS","16":"REST API","17":"GraphQL","18":"Redux","19":"Next.js","20":"Express.js","21":"Prisma","22":"Figma","23":"Photoshop","24":"Excel","25":"Communication","26":"Leadership","27":"Project Management","28":"Agile","29":"Scrum"};
+    const ids = skill_ids ? (Array.isArray(skill_ids) ? skill_ids : [skill_ids]) : [];
+    const skillsArray = ids.map(id => skillMap[String(id)] || String(id));
 
     const profile = await prisma.employeeProfile.create({
-      data: {
-        userId,
-        departmentId: department_id ? parseInt(department_id) : null,
-        phone,
-        address,
-        designation,
-        salary: salary ? parseFloat(salary) : null,
-        skills: skillsArray,
-      },
-      include: {
-        user: { select: { id: true, name: true, email: true, role: true } },
-        department: true,
-      }
+      data: { userId, departmentId: department_id ? parseInt(department_id) : null, phone, address, designation, salary: salary ? parseFloat(salary) : null, skills: skillsArray },
+      include: { user: { select: { id: true, name: true, email: true, role: true } }, department: true }
     });
-
     res.status(201).json({ message: 'Employee created!', employee: { ...profile, id: profile.id } });
   } catch (err) {
     console.error('CREATE EMPLOYEE ERROR:', err.message);
@@ -67,10 +55,7 @@ router.post('/upload/:id', auth, upload.array('images', 5), async (req, res) => 
   try {
     const images = req.files ? req.files.map(f => f.filename) : [];
     if (images.length > 0) {
-      await prisma.employeeProfile.update({
-        where: { id: parseInt(req.params.id) },
-        data: { profileImage: images[0] }
-      });
+      await prisma.employeeProfile.update({ where: { id: parseInt(req.params.id) }, data: { profileImage: images[0] } });
     }
     res.json({ message: 'Images uploaded!' });
   } catch (err) {
@@ -78,16 +63,36 @@ router.post('/upload/:id', auth, upload.array('images', 5), async (req, res) => 
   }
 });
 
-// GET all employees
+// GET all employees (with search, filter, sort, pagination)
 router.get('/', auth, async (req, res) => {
   try {
-    const employees = await prisma.employeeProfile.findMany({
-      include: {
-        user: { select: { id: true, name: true, email: true, role: true } },
-        department: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const { search, departmentId, designation, sortBy, sortOrder, page = 1, limit = 20 } = req.query;
+
+    const where = {};
+    if (departmentId) where.departmentId = parseInt(departmentId);
+    if (designation) where.designation = { contains: designation, mode: 'insensitive' };
+    if (search) {
+      where.OR = [
+        { user: { name: { contains: search, mode: 'insensitive' } } },
+        { user: { email: { contains: search, mode: 'insensitive' } } },
+        { designation: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const validSortFields = { name: { user: { name: 'asc' } }, salary: 'salary', createdAt: 'createdAt', designation: 'designation' };
+    const orderBy = sortBy === 'name'
+      ? { user: { name: sortOrder === 'asc' ? 'asc' : 'desc' } }
+      : { [validSortFields[sortBy] || 'createdAt']: sortOrder === 'asc' ? 'asc' : 'desc' };
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const [employees, total] = await Promise.all([
+      prisma.employeeProfile.findMany({
+        where, skip, take: parseInt(limit), orderBy,
+        include: { user: { select: { id: true, name: true, email: true, role: true } }, department: true }
+      }),
+      prisma.employeeProfile.count({ where })
+    ]);
+
     const mapped = employees.map(e => ({
       ...e,
       name: e.user?.name,
@@ -95,7 +100,7 @@ router.get('/', auth, async (req, res) => {
       role: e.user?.role,
       department_name: e.department?.departmentName,
     }));
-    res.json(mapped);
+    res.json({ employees: mapped, total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(total / parseInt(limit)) });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -106,10 +111,7 @@ router.get('/:id', auth, async (req, res) => {
   try {
     const profile = await prisma.employeeProfile.findUnique({
       where: { id: parseInt(req.params.id) },
-      include: {
-        user: { select: { id: true, name: true, email: true, role: true } },
-        department: true,
-      }
+      include: { user: { select: { id: true, name: true, email: true, role: true } }, department: true }
     });
     if (!profile) return res.status(404).json({ message: 'Employee not found' });
     res.json({ ...profile, name: profile.user?.name, email: profile.user?.email, department_name: profile.department?.departmentName });
@@ -119,21 +121,16 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // PUT update employee
-router.put('/:id', auth, upload.array('images', 5), async (req, res) => {
+router.put('/:id', auth, upload.array('images', 5), validate(updateEmployeeSchema), async (req, res) => {
   const { department_id, phone, address, designation, salary, skill_ids } = req.body;
   try {
-    const skillMap = {"1":"JavaScript","2":"TypeScript","3":"React","4":"Node.js","5":"Python","6":"Java","7":"C++","8":"SQL","9":"PostgreSQL","10":"MongoDB","11":"HTML","12":"CSS","13":"Git","14":"Docker","15":"AWS","16":"REST API","17":"GraphQL","18":"Redux","19":"Next.js","20":"Express.js","21":"Prisma","22":"Figma","23":"Photoshop","24":"Excel","25":"Communication","26":"Leadership","27":"Project Management","28":"Agile","29":"Scrum"}; const ids = skill_ids ? (Array.isArray(skill_ids) ? skill_ids : [skill_ids]) : []; const skillsArray = ids.map(id => skillMap[String(id)] || String(id));
+    const skillMap = {"1":"JavaScript","2":"TypeScript","3":"React","4":"Node.js","5":"Python","6":"Java","7":"C++","8":"SQL","9":"PostgreSQL","10":"MongoDB","11":"HTML","12":"CSS","13":"Git","14":"Docker","15":"AWS","16":"REST API","17":"GraphQL","18":"Redux","19":"Next.js","20":"Express.js","21":"Prisma","22":"Figma","23":"Photoshop","24":"Excel","25":"Communication","26":"Leadership","27":"Project Management","28":"Agile","29":"Scrum"};
+    const ids = skill_ids ? (Array.isArray(skill_ids) ? skill_ids : [skill_ids]) : [];
+    const skillsArray = ids.map(id => skillMap[String(id)] || String(id));
     const images = req.files ? req.files.map(f => f.filename) : [];
-
     const updated = await prisma.employeeProfile.update({
       where: { id: parseInt(req.params.id) },
-      data: {
-        departmentId: department_id ? parseInt(department_id) : null,
-        phone, address, designation,
-        salary: salary ? parseFloat(salary) : null,
-        skills: skillsArray,
-        ...(images.length > 0 && { profileImage: images[0] }),
-      }
+      data: { departmentId: department_id ? parseInt(department_id) : null, phone, address, designation, salary: salary ? parseFloat(salary) : null, skills: skillsArray, ...(images.length > 0 && { profileImage: images[0] }) }
     });
     res.json({ message: 'Employee updated!', profile: updated });
   } catch (err) {
@@ -151,7 +148,6 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-
 // GET dashboard stats
 router.get('/stats/dashboard', auth, async (req, res) => {
   try {
@@ -161,10 +157,8 @@ router.get('/stats/dashboard', auth, async (req, res) => {
       prisma.employeeProfile.findMany({ select: { skills: true } }),
       prisma.employeeProfile.findMany({ select: { profileImage: true } }),
     ]);
-
     const totalSkills = [...new Set(skillsData.flatMap(e => e.skills))].length;
     const totalImages = imagesData.filter(e => e.profileImage).length;
-
     res.json({ totalEmployees, totalDepartments, totalSkills, totalImages });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -174,14 +168,8 @@ router.get('/stats/dashboard', auth, async (req, res) => {
 // GET department-wise employee count
 router.get('/stats/by-department', auth, async (req, res) => {
   try {
-    const departments = await prisma.department.findMany({
-      include: { employeeProfiles: true },
-    });
-    const data = departments.map(d => ({
-      department: d.departmentName,
-      employees: d.employeeProfiles.length,
-    }));
-    res.json(data);
+    const departments = await prisma.department.findMany({ include: { employeeProfiles: true } });
+    res.json(departments.map(d => ({ department: d.departmentName, employees: d.employeeProfiles.length })));
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -190,17 +178,13 @@ router.get('/stats/by-department', auth, async (req, res) => {
 // GET monthly joining trend
 router.get('/stats/monthly-joining', auth, async (req, res) => {
   try {
-    const profiles = await prisma.employeeProfile.findMany({
-      select: { createdAt: true },
-      orderBy: { createdAt: 'asc' },
-    });
+    const profiles = await prisma.employeeProfile.findMany({ select: { createdAt: true }, orderBy: { createdAt: 'asc' } });
     const monthMap = {};
     profiles.forEach(p => {
       const key = p.createdAt.toISOString().slice(0, 7);
       monthMap[key] = (monthMap[key] || 0) + 1;
     });
-    const data = Object.entries(monthMap).map(([month, count]) => ({ month, count }));
-    res.json(data);
+    res.json(Object.entries(monthMap).map(([month, count]) => ({ month, count })));
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -221,22 +205,10 @@ router.get('/search/global', auth, async (req, res) => {
           { skills: { has: q } },
         ],
       },
-      include: {
-        user: { select: { id: true, name: true, email: true, role: true } },
-        department: true,
-      },
+      include: { user: { select: { id: true, name: true, email: true, role: true } }, department: true },
       take: 10,
     });
-    const results = profiles.map(p => ({
-      id: p.id,
-      name: p.user?.name,
-      email: p.user?.email,
-      role: p.user?.role,
-      designation: p.designation,
-      department: p.department?.departmentName,
-      skills: p.skills,
-    }));
-    res.json(results);
+    res.json(profiles.map(p => ({ id: p.id, name: p.user?.name, email: p.user?.email, role: p.user?.role, designation: p.designation, department: p.department?.departmentName, skills: p.skills })));
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

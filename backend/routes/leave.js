@@ -3,7 +3,10 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const auth = require('../middleware/auth');
+const emailService = require("../src/utils/emailService");
 const createNotification = require('../src/utils/notificationHelper');
+const validate = require('../src/middleware/validate');
+const { applyLeaveSchema, approveLeaveSchema } = require('../src/validators/leave.validator');
 
 const mapLeave = (l) => ({
   ...l,
@@ -24,6 +27,7 @@ const approveLeave = async (req, res) => {
     const leave = await prisma.leaveRequest.update({
       where: { id: parseInt(req.params.id) },
       data: { status },
+      include: { user: true, leaveType: true }
     });
     await prisma.leaveApproval.create({
       data: {
@@ -39,6 +43,16 @@ const approveLeave = async (req, res) => {
       title: `Leave ${status.charAt(0).toUpperCase() + status.slice(1)}`,
       message: `Your leave request has been ${status}.${comments ? ' Comment: ' + comments : ''}`,
     });
+    // Send email notification
+    emailService.sendLeaveStatusEmail({
+      name: leave.user.name,
+      email: leave.user.email,
+      status,
+      leaveType: leave.leaveType.name,
+      startDate: leave.startDate,
+      endDate: leave.endDate,
+      comments,
+    });
     res.json({ message: `Leave ${status}!`, leave });
   } catch (err) {
     console.error('APPROVE ERROR:', err.message);
@@ -46,7 +60,7 @@ const approveLeave = async (req, res) => {
   }
 };
 
-// GET leave types - PUBLIC
+// GET leave types
 router.get('/types', async (req, res) => {
   try {
     const types = await prisma.leaveType.findMany();
@@ -69,8 +83,36 @@ router.get('/balance', auth, async (req, res) => {
   }
 });
 
+// GET leave stats
+router.get('/stats', auth, async (req, res) => {
+  try {
+    const [pending, approved, rejected, total] = await Promise.all([
+      prisma.leaveRequest.count({ where: { status: 'pending' } }),
+      prisma.leaveRequest.count({ where: { status: 'approved' } }),
+      prisma.leaveRequest.count({ where: { status: 'rejected' } }),
+      prisma.leaveRequest.count(),
+    ]);
+    res.json({ pending, approved, rejected, total });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// GET leave type breakdown
+router.get('/stats/by-type', auth, async (req, res) => {
+  try {
+    const types = await prisma.leaveType.findMany({
+      include: { leaveRequests: true },
+    });
+    const data = types.map(t => ({ name: t.name, value: t.leaveRequests.length }));
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 // POST apply leave
-router.post('/apply', auth, async (req, res) => {
+router.post('/apply', auth, validate(applyLeaveSchema), async (req, res) => {
   const { leave_type_id, from_date, to_date, reason } = req.body;
   try {
     const start = new Date(from_date);
@@ -130,39 +172,8 @@ router.get('/all', auth, async (req, res) => {
   }
 });
 
-// PUT approve/reject routes
-router.put('/:id/approve', auth, approveLeave);
-router.put('/action/:id', auth, approveLeave);
+// PUT approve/reject
+router.put('/:id/approve', auth, validate(approveLeaveSchema), approveLeave);
+router.put('/action/:id', auth, validate(approveLeaveSchema), approveLeave);
 
 module.exports = router;
-
-// GET leave stats
-router.get('/stats', auth, async (req, res) => {
-  try {
-    const [pending, approved, rejected, total] = await Promise.all([
-      prisma.leaveRequest.count({ where: { status: 'pending' } }),
-      prisma.leaveRequest.count({ where: { status: 'approved' } }),
-      prisma.leaveRequest.count({ where: { status: 'rejected' } }),
-      prisma.leaveRequest.count(),
-    ]);
-    res.json({ pending, approved, rejected, total });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-});
-
-// GET leave type breakdown
-router.get('/stats/by-type', auth, async (req, res) => {
-  try {
-    const types = await prisma.leaveType.findMany({
-      include: { leaveRequests: true },
-    });
-    const data = types.map(t => ({
-      name: t.name,
-      value: t.leaveRequests.length,
-    }));
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-});
