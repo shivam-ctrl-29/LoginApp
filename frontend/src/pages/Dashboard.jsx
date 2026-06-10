@@ -6,9 +6,9 @@ import { fetchUser } from '../redux/slices/authSlice';
 import axios from 'axios';
 import {
   Users, Clock, Package, AlertCircle, 
-  Plus, FileText, Calendar, Settings, ArrowRight,
+  Plus, FileText, Calendar, Settings,
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import AppLayout from '../components/layout/AppLayout';
 import { DashboardSkeleton } from '../components/ui/Skeleton';
 import API_URL from '../config/api';

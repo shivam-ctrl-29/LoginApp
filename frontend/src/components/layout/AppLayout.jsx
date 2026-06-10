@@ -8,7 +8,7 @@ import Sidebar from './Sidebar';
 
 const AppLayout = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { theme } = useTheme();
+  
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user, error } = useSelector(state => state.auth);

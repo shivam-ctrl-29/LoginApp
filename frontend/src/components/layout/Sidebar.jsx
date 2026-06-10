@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, UserPlus, CalendarPlus, CalendarDays,
-  CheckSquare, Shield, LogOut, Moon, Sun, Menu, X, Building2, Package, BarChart2,
+  CheckSquare, Shield, LogOut, Menu, X, Building2, Package, BarChart2,
 } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
 import useAuth from '../../hooks/useAuth';
-import Avatar from '../ui/Avatar';
+
 import NotificationBell from '../ui/NotificationBell';
 
 const NAV_ITEMS = [
@@ -24,7 +24,7 @@ const NAV_ITEMS = [
 const Sidebar = ({ mobileOpen, setMobileOpen }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { theme, isDark, toggleTheme } = useTheme();
+  
   const { user, handleLogout, isAdmin, canApprove } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
 

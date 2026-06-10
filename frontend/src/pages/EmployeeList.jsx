@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { UserPlus, Pencil, Trash2, Search, X, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, Search, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import AppLayout from '../components/layout/AppLayout';
 import { TableSkeleton } from '../components/ui/Skeleton';
 import { useToast } from '../context/ToastContext';

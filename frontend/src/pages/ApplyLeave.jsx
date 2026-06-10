@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Send, Calendar, Info, X } from 'lucide-react';
+import { Send, Calendar, Info } from 'lucide-react';
 import AppLayout from '../components/layout/AppLayout';
 import { useToast } from '../context/ToastContext';
 import useAuth from '../hooks/useAuth';
