@@ -27,7 +27,7 @@ function EmployeeList() {
   const fetchEmployees = async () => {
     const token = localStorage.getItem('token');
     try {
-      const res = await axios.get(`${API_URL}/api/v1/v1/employees`, {
+      const res = await axios.get(`${API_URL}/api/v1/employees`, {
         headers: { Authorization: token },
       });
       const data = res.data;
@@ -42,7 +42,7 @@ function EmployeeList() {
   const handleDelete = async () => {
     const token = localStorage.getItem('token');
     try {
-      await axios.delete(`${API_URL}/api/v1/v1/employees/${deleteId}`, {
+      await axios.delete(`${API_URL}/api/v1/employees/${deleteId}`, {
         headers: { Authorization: token },
       });
       toast.success('Employee deleted successfully');
