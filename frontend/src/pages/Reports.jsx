@@ -5,13 +5,9 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { FileText, Download, Users, CalendarDays, Package } from 'lucide-react';
 import AppLayout from '../components/layout/AppLayout';
-import PageHeader from '../components/ui/PageHeader';
-import GlassCard from '../components/ui/GlassCard';
-import { useTheme } from '../theme/ThemeContext';
 import API_URL from '../config/api';
 
 function Reports() {
-  const { theme } = useTheme();
   const [loading, setLoading] = useState('');
   const token = localStorage.getItem('token');
   const headers = { Authorization: token };
@@ -123,48 +119,110 @@ function Reports() {
 
   return (
     <AppLayout>
-      <PageHeader title="Reports" subtitle="Export data as PDF, Excel or CSV" />
+      <div style={{ animation: 'authCardEnter 0.4s ease forwards' }}>
+        {/* Header */}
+        <div style={{ marginBottom: 32 }}>
+          <h1 style={{
+            fontSize: 28,
+            fontWeight: 700,
+            color: 'var(--text-primary)',
+            marginBottom: 8,
+          }}>
+            Reports
+          </h1>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+            Export data as PDF, Excel or CSV
+          </p>
+        </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
-        {reports.map(r => (
-          <GlassCard key={r.type} style={{ padding: 24 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: r.color + '22', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <r.icon size={22} color={r.color} />
+        {/* Report Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
+          {reports.map(r => (
+            <div
+              key={r.type}
+              style={{
+                background: 'var(--bg-surface)',
+                borderRadius: 'var(--radius-lg)',
+                padding: 24,
+                border: '1px solid var(--border)',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+                <div style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  background: r.color + '22',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <r.icon size={22} color={r.color} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{r.title}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{r.subtitle}</div>
+                </div>
               </div>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: theme.colors.text }}>{r.title}</div>
-                <div style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 }}>{r.subtitle}</div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                {['csv', 'excel', 'pdf'].map(fmt => (
+                  <button
+                    key={fmt}
+                    onClick={() => handleExport(r.type, fmt)}
+                    disabled={loading === r.type + '-' + fmt}
+                    style={{
+                      flex: 1,
+                      padding: '10px 0',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border)',
+                      background: loading === r.type + '-' + fmt ? 'var(--bg-elevated)' : 'var(--bg-elevated)',
+                      color: 'var(--text-primary)',
+                      cursor: loading === r.type + '-' + fmt ? 'not-allowed' : 'pointer',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      textTransform: 'uppercase',
+                      fontFamily: 'inherit',
+                      opacity: loading === r.type + '-' + fmt ? 0.7 : 1,
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={e => loading !== r.type + '-' + fmt && (e.currentTarget.style.background = 'var(--bg-hover)')}
+                    onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-elevated)'}
+                  >
+                    <Download size={13} />
+                    {loading === r.type + '-' + fmt ? '...' : fmt}
+                  </button>
+                ))}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              {['csv', 'excel', 'pdf'].map(fmt => (
-                <button
-                  key={fmt}
-                  onClick={() => handleExport(r.type, fmt)}
-                  disabled={loading === r.type + '-' + fmt}
-                  style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: '1px solid ' + theme.colors.border, background: loading === r.type + '-' + fmt ? theme.colors.glass : 'transparent', color: theme.colors.text, cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, textTransform: 'uppercase' }}
-                >
-                  <Download size={13} />
-                  {loading === r.type + '-' + fmt ? '...' : fmt}
-                </button>
-              ))}
-            </div>
-          </GlassCard>
-        ))}
+          ))}
+        </div>
+
+        {/* Instructions Card */}
+        <div style={{
+          background: 'var(--bg-surface)',
+          borderRadius: 'var(--radius-lg)',
+          padding: 24,
+          border: '1px solid var(--border)',
+          marginTop: 20,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <FileText size={18} color="var(--accent)" />
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Export Instructions</div>
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+            • <strong>CSV</strong> — Opens in Excel, Google Sheets. Best for data analysis.<br />
+            • <strong>Excel</strong> — Formatted .xlsx file with proper columns.<br />
+            • <strong>PDF</strong> — Printable report with table formatting.
+          </div>
+        </div>
       </div>
-
-      <GlassCard style={{ padding: 24, marginTop: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-          <FileText size={18} color={theme.colors.info} />
-          <div style={{ fontSize: 14, fontWeight: 700, color: theme.colors.text }}>Export Instructions</div>
-        </div>
-        <div style={{ fontSize: 13, color: theme.colors.textSecondary, lineHeight: 1.8 }}>
-          • <strong>CSV</strong> — Opens in Excel, Google Sheets. Best for data analysis.<br />
-          • <strong>Excel</strong> — Formatted .xlsx file with proper columns.<br />
-          • <strong>PDF</strong> — Printable report with table formatting.
-        </div>
-      </GlassCard>
     </AppLayout>
   );
 }

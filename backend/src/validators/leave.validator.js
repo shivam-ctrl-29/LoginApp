@@ -1,21 +1,20 @@
 const Joi = require('joi');
 
 const applyLeaveSchema = Joi.object({
-  leaveTypeId: Joi.number().integer().required(),
-  startDate: Joi.date().required(),
-  endDate: Joi.date().min(Joi.ref('startDate')).required().messages({
-    'date.min': 'End date must be after or equal to start date'
-  }),
-  reason: Joi.string().min(10).max(500).required().messages({
-    'string.min': 'Reason must be at least 10 characters'
-  })
-});
+  leaveTypeId: Joi.number().integer().optional(),
+  leave_type_id: Joi.alternatives().try(Joi.number().integer(), Joi.string()).optional(),
+  startDate: Joi.date().optional(),
+  endDate: Joi.date().optional(),
+  from_date: Joi.alternatives().try(Joi.date(), Joi.string()).optional(),
+  to_date: Joi.alternatives().try(Joi.date(), Joi.string()).optional(),
+  reason: Joi.string().min(3).max(500).required(),
+}).unknown(true);
 
 const approveLeaveSchema = Joi.object({
   status: Joi.string().valid('approved', 'rejected').optional(),
   action: Joi.string().valid('approved', 'rejected').optional(),
-  comments: Joi.string().max(500).optional(),
-  remarks: Joi.string().max(500).optional()
-}).or('status', 'action');
+  comments: Joi.string().max(500).optional().allow('', null),
+  remarks: Joi.string().max(500).optional().allow('', null),
+}).unknown(true);
 
 module.exports = { applyLeaveSchema, approveLeaveSchema };

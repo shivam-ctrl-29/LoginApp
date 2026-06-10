@@ -24,14 +24,14 @@ const AppLayout = ({ children }) => {
   return (
     <div style={{
       minHeight: '100vh',
-      background: theme.colors.bgGradient,
+      background: 'var(--bg-primary)',
     }}>
       <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
-      <div style={{ position: "fixed", top: 16, left: 280, right: 24, zIndex: 900, display: "flex" }}>
+      <div style={{ position: "fixed", top: 16, left: 260, right: 24, zIndex: 900, display: "flex" }}>
         <GlobalSearch />
       </div>
       <main className="main-content" style={{
-        marginLeft: 260,
+        marginLeft: 240,
         padding: '80px 36px 32px',
         minHeight: '100vh',
         transition: 'margin 0.3s ease',
