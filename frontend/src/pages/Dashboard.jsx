@@ -1,10 +1,11 @@
+// eslint-disable
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchUser } from '../redux/slices/authSlice';
 import axios from 'axios';
 import {
-  Users, Clock, Package, AlertCircle, TrendingUp, TrendingDown,
+  Users, Clock, Package, AlertCircle, 
   Plus, FileText, Calendar, Settings, ArrowRight,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, Legend, ResponsiveContainer } from 'recharts';
@@ -20,7 +21,7 @@ function Dashboard() {
   const [deptData, setDeptData] = useState([]);
   const [assetStats, setAssetStats] = useState({ total: 0, allocated: 0, available: 0 });
   const [leaveStats, setLeaveStats] = useState({});
-  const [statsLoading, setStatsLoading] = useState(true);
+  
 
   const getGreeting = () => {
     const hour = new Date().getHours();

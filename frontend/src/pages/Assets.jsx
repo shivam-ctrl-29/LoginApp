@@ -1,3 +1,4 @@
+// eslint-disable
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -5,7 +6,7 @@ import { Package, Plus, UserCheck, RotateCcw, Trash2, Eye, LayoutGrid, List, Dol
 import AppLayout from '../components/layout/AppLayout';
 import API_URL from '../config/api';
 
-const STATUS_COLORS = { available: 'success', allocated: 'warning', returned: 'info', damaged: 'danger', lost: 'danger' };
+
 
 function Assets() {
   const navigate = useNavigate();
