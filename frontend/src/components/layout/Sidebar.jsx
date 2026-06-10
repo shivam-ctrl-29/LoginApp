@@ -4,7 +4,6 @@ import {
   LayoutDashboard, Users, UserPlus, CalendarPlus, CalendarDays,
   CheckSquare, Shield, LogOut, Menu, X, Building2, Package, BarChart2,
 } from 'lucide-react';
-import { useTheme } from '../../theme/ThemeContext';
 import useAuth from '../../hooks/useAuth';
 
 import NotificationBell from '../ui/NotificationBell';
