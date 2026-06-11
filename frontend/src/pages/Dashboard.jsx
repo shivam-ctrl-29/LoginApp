@@ -19,6 +19,7 @@ function Dashboard() {
   const { user, loading } = useSelector(state => state.auth);
   const [stats, setStats] = useState({});
   const [deptData, setDeptData] = useState([]);
+  const [activities, setActivities] = useState([]);
   const [assetStats, setAssetStats] = useState({ total: 0, allocated: 0, available: 0 });
   const [leaveStats, setLeaveStats] = useState({});
   
@@ -47,7 +48,7 @@ function Dashboard() {
     const fetchStats = async () => {
       const token = localStorage.getItem('token');
       try {
-        const [empStats, lvStats, deptStats, assetRes] = await Promise.all([
+        const [empStats, lvStats, deptStats, assetRes, auditRes] = await Promise.all([
           axios.get(`${API_URL}/api/v1/employees/stats/dashboard`, {
             headers: { Authorization: token },
           }),
@@ -60,6 +61,9 @@ function Dashboard() {
           axios.get(`${API_URL}/api/v1/assets?limit=1000`, {
             headers: { Authorization: token },
           }),
+          axios.get(`${API_URL}/api/v1/audit?limit=5`, {
+            headers: { Authorization: token },
+          }),
         ]);
         setStats(empStats.data);
         setLeaveStats(lvStats.data);
@@ -70,6 +74,12 @@ function Dashboard() {
           allocated: assets.filter(a => a.status === 'allocated').length,
           available: assets.filter(a => a.status === 'available').length,
         });
+        const logs = auditRes.data?.logs || auditRes.data?.data || [];
+        setActivities(logs.map(log => ({
+          message: `${log.actionType} on ${log.tableName} by ${log.user?.name || 'System'}`,
+          time: new Date(log.createdAt).toLocaleTimeString(),
+          color: log.actionType === 'CREATE' ? '#22c55e' : log.actionType === 'DELETE' ? '#ef4444' : '#6366f1',
+        })));
       } catch (err) {
         console.error(err);
       } finally {
@@ -95,12 +105,7 @@ function Dashboard() {
     { name: 'Rejected', value: leaveStats.rejected || 0, color: '#ef4444' },
   ];
 
-  const activities = [
-    { type: 'hire', message: 'New employee joined Engineering', time: '2 hours ago', color: '#22c55e' },
-    { type: 'leave', message: 'Leave request approved for John Doe', time: '4 hours ago', color: '#6366f1' },
-    { type: 'asset', message: 'Laptop assigned to Sarah Smith', time: '6 hours ago', color: '#8b5cf6' },
-    { type: 'alert', message: 'Pending approval: 3 leave requests', time: '8 hours ago', color: '#f59e0b' },
-  ];
+
 
   return (
     <AppLayout>

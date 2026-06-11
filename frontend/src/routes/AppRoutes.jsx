@@ -19,6 +19,7 @@ import Reports from '../pages/Reports';
 import AddAsset from '../pages/AddAsset';
 import Attendance from '../pages/Attendance';
 import Payroll from '../pages/Payroll';
+import PayrollAdmin from '../pages/PayrollAdmin';
 
 function AppRoutes() {
   return (
@@ -42,6 +43,7 @@ function AppRoutes() {
       <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
       <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
       <Route path="/payroll" element={<ProtectedRoute><Payroll /></ProtectedRoute>} />
+      <Route path="/payroll/admin" element={<ProtectedRoute><PayrollAdmin /></ProtectedRoute>} />
     </Routes>
   );
 }

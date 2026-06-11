@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { path: '/reports', label: 'Reports', icon: BarChart2, roles: ['admin', 'hr', 'manager'] },
   { path: '/attendance', label: 'Attendance', icon: Clock },
   { path: '/payroll', label: 'My Payroll', icon: DollarSign },
+  { path: '/payroll/admin', label: 'Payroll Admin', icon: DollarSign, roles: ['admin', 'hr'] },
   { path: '/admin', label: 'Admin Panel', icon: Shield, roles: ['admin'] },
 ];
 

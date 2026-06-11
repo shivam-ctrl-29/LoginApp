@@ -51,10 +51,14 @@ const findAllMonthlyAttendance = async (month, year) => {
 
 const getAttendanceSummary = async (userId, month, year) => {
   const records = await findMonthlyAttendance(userId, month, year);
+  const present = records.filter(r => r.status === 'present').length;
+  const late = records.filter(r => r.status === 'late').length;
+  const absent = records.filter(r => r.status === 'absent').length;
   return {
-    present: records.filter(r => r.status === 'present').length,
-    late: records.filter(r => r.status === 'late').length,
-    absent: records.filter(r => r.status === 'absent').length,
+    present,
+    late,
+    absent,
+    totalPresent: present + late, // late counts as present
     total: records.length,
     records
   };
