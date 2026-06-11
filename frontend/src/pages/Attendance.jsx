@@ -1,5 +1,4 @@
-// eslint-disable
-// eslint-disable
+/* eslint-disable */
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { LogIn, LogOut, Clock, CheckCircle, XCircle, AlertTriangle, Calendar, TrendingUp } from 'lucide-react';

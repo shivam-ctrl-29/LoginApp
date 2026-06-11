@@ -1,5 +1,4 @@
-// eslint-disable
-// eslint-disable
+/* eslint-disable */
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
