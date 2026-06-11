@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, UserPlus, CalendarPlus, CalendarDays,
   CheckSquare, Shield, LogOut, Menu, X, Building2, Package, BarChart2,
+  Clock, DollarSign,
 } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 
@@ -17,6 +18,8 @@ const NAV_ITEMS = [
   { path: '/leave/approval', label: 'Approvals', icon: CheckSquare, roles: ['admin', 'hr', 'manager'] },
   { path: '/assets', label: 'Assets', icon: Package, roles: ['admin', 'hr', 'manager'] },
   { path: '/reports', label: 'Reports', icon: BarChart2, roles: ['admin', 'hr', 'manager'] },
+  { path: '/attendance', label: 'Attendance', icon: Clock },
+  { path: '/payroll', label: 'My Payroll', icon: DollarSign },
   { path: '/admin', label: 'Admin Panel', icon: Shield, roles: ['admin'] },
 ];
 

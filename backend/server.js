@@ -17,6 +17,8 @@ const errorHandler = require('./src/middleware/errorHandler');
 const assetRoutes = require('./src/routes/assetRoutes');
 const notificationRoutes = require('./src/routes/notificationRoutes');
 const auditRoutes = require('./src/routes/auditRoutes');
+const attendanceRoutes = require('./src/routes/attendanceRoutes');
+const payrollRoutes = require('./src/routes/payrollRoutes');
 
 require("./src/jobs/cronJobs");
 
@@ -58,6 +60,8 @@ app.use('/api/v1/leave',         leaveRoutes);
 app.use('/api/v1/assets',        assetRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/audit',         auditRoutes);
+app.use('/api/v1/attendance',    attendanceRoutes);
+app.use('/api/v1/payroll',       payrollRoutes);
 
 // ─── Health Check ─────────────────────────────────────────────
 app.get('/api/v1/health', async (req, res) => {

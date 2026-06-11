@@ -148,55 +148,7 @@ function EmployeeList() {
           </button>
         </div>
 
-        {/* Search Bar */}
-        <div style={{ position: 'relative', marginBottom: 20 }}>
-          <Search size={18} style={{
-            position: 'absolute',
-            left: 16,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            color: 'var(--text-muted)',
-          }} />
-          <input
-            type="text"
-            placeholder="Search employees by name, email, or designation..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              height: 44,
-              padding: '0 16px 0 48',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border)',
-              background: 'var(--bg-surface)',
-              color: 'var(--text-primary)',
-              fontSize: 14,
-              fontFamily: 'inherit',
-              outline: 'none',
-              transition: 'all 0.2s ease',
-            }}
-            onFocus={e => e.target.style.borderColor = 'var(--accent)'}
-            onBlur={e => e.target.style.borderColor = 'var(--border)'}
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              style={{
-                position: 'absolute',
-                right: 16,
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'none',
-                border: 'none',
-                color: 'var(--text-muted)',
-                cursor: 'pointer',
-                padding: 4,
-              }}
-            >
-              <X size={16} />
-            </button>
-          )}
-        </div>
+
 
         {/* Filter Chips */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>

@@ -50,4 +50,38 @@ cron.schedule('0 1 * * 0', async () => {
   }
 });
 
+// ─── Job 4: Auto-mark absent at end of day (runs at 11:59 PM) ───
+cron.schedule('59 23 * * *', async () => {
+  console.log('[CRON] Auto-marking absent employees...');
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Get all active employees
+    const employees = await prisma.employeeProfile.findMany({
+      include: { user: true }
+    });
+
+    for (const emp of employees) {
+      const existing = await prisma.attendance.findFirst({
+        where: { userId: emp.userId, date: { gte: today, lt: tomorrow } }
+      });
+      if (!existing) {
+        await prisma.attendance.create({
+          data: {
+            userId: emp.userId,
+            date: today,
+            status: 'absent'
+          }
+        });
+      }
+    }
+    console.log('[CRON] Auto-absent marking done.');
+  } catch (err) {
+    console.error('[CRON] Auto-absent failed:', err.message);
+  }
+});
+
 console.log('[CRON] All background jobs scheduled.');

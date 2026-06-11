@@ -17,6 +17,8 @@ import EditEmployee from '../pages/EditEmployee';
 import Assets from '../pages/Assets';
 import Reports from '../pages/Reports';
 import AddAsset from '../pages/AddAsset';
+import Attendance from '../pages/Attendance';
+import Payroll from '../pages/Payroll';
 
 function AppRoutes() {
   return (
@@ -36,8 +38,10 @@ function AppRoutes() {
       <Route path="/leave/approval" element={<ProtectedRoute><LeaveApproval /></ProtectedRoute>} />
       <Route path="/assets" element={<ProtectedRoute><Assets /></ProtectedRoute>} />
       <Route path="/assets/add" element={<ProtectedRoute><AddAsset /></ProtectedRoute>} />
-      <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
       <Route path="/assets/edit/:id" element={<ProtectedRoute><AddAsset /></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+      <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
+      <Route path="/payroll" element={<ProtectedRoute><Payroll /></ProtectedRoute>} />
     </Routes>
   );
 }

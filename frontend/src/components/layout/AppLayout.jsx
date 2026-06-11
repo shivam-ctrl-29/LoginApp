@@ -26,7 +26,17 @@ const AppLayout = ({ children }) => {
       background: 'var(--bg-primary)',
     }}>
       <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
-      <div style={{ position: "fixed", top: 16, left: 260, right: 24, zIndex: 900, display: "flex" }}>
+      <div style={{ 
+        position: "fixed", 
+        top: 0, 
+        left: 240, 
+        right: 0, 
+        zIndex: 900, 
+        background: 'var(--bg-primary)',
+        borderBottom: '1px solid var(--border)',
+        padding: '12px 36px',
+        display: "flex" 
+      }}>
         <GlobalSearch />
       </div>
       <main className="main-content" style={{
