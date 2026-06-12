@@ -40,8 +40,9 @@ function LeaveApproval() {
     setActionLoading(id + action);
     const token = getToken();
     try {
-      await axios.put(`${API_URL}/api/v1/leave/action/${id}`, { action, remarks: remarks[id] || '' }, { headers: { Authorization: token } });
-      toast.success(`Leave ${action} successfully`);
+      const normalizedAction = action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : action;
+      await axios.put(`${API_URL}/api/v1/leave/action/${id}`, { action: normalizedAction, remarks: remarks[id] || '' }, { headers: { Authorization: token } });
+      toast.success(`Leave ${normalizedAction} successfully`);
       fetchLeaves();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Action failed');
