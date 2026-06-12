@@ -44,15 +44,20 @@ const approveLeave = async (req, res) => {
       message: `Your leave request has been ${status}.${comments ? ' Comment: ' + comments : ''}`,
     });
     // Send email notification
-    emailService.sendLeaveStatusEmail({
-      name: leave.user.name,
-      email: leave.user.email,
-      status,
-      leaveType: leave.leaveType.name,
-      startDate: leave.startDate,
-      endDate: leave.endDate,
-      comments,
-    });
+    try {
+      await emailService.sendLeaveStatusEmail({
+        name: leave.user.name,
+        email: leave.user.email,
+        status,
+        leaveType: leave.leaveType.name,
+        startDate: leave.startDate,
+        endDate: leave.endDate,
+        comments,
+      });
+      console.log(`[EMAIL] Leave ${status} email sent to ${leave.user.email}`);
+    } catch (emailErr) {
+      console.error('[EMAIL] Failed to send leave email:', emailErr.message);
+    }
     res.json({ message: `Leave ${status}!`, leave });
   } catch (err) {
     console.error('APPROVE ERROR:', err.message);
