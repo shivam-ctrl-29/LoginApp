@@ -1,9 +1,10 @@
+/* eslint-disable */
 import React, { useState } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { FileText, Download, Users, CalendarDays, Package } from 'lucide-react';
+import { FileText, Download, Users, CalendarDays, Package, ArrowDown } from 'lucide-react';
 import AppLayout from '../components/layout/AppLayout';
 import API_URL from '../config/api';
 
@@ -57,9 +58,9 @@ function Reports() {
 
   const exportCSV = (data, filename) => {
     if (!data.length) return alert('No data to export');
-    const headers = Object.keys(data[0]);
-    const rows = data.map(row => headers.map(h => row[h] ?? '').join(','));
-    const csv = [headers.join(','), ...rows].join('\n');
+    const hdrs = Object.keys(data[0]);
+    const rows = data.map(row => hdrs.map(h => row[h] ?? '').join(','));
+    const csv = [hdrs.join(','), ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -102,7 +103,6 @@ function Reports() {
       if (type === 'employees') { data = await fetchEmployees(); filename = 'Employee_Report'; title = 'Employee Report'; }
       else if (type === 'leaves') { data = await fetchLeaves(); filename = 'Leave_Report'; title = 'Leave Report'; }
       else if (type === 'assets') { data = await fetchAssets(); filename = 'Asset_Report'; title = 'Asset Report'; }
-
       if (format === 'csv') exportCSV(data, filename);
       else if (format === 'excel') exportExcel(data, filename);
       else if (format === 'pdf') exportPDF(data, filename, title);
@@ -112,114 +112,112 @@ function Reports() {
   };
 
   const reports = [
-    { type: 'employees', title: 'Employee Report', subtitle: 'Name, email, department, skills, salary', icon: Users, color: '#6366f1' },
-    { type: 'leaves', title: 'Leave Report', subtitle: 'All leave requests with status', icon: CalendarDays, color: '#22c55e' },
-    { type: 'assets', title: 'Asset Report', subtitle: 'All assets with status and cost', icon: Package, color: '#f59e0b' },
+    {
+      type: 'employees', title: 'Employee Report', subtitle: 'Full employee directory with roles, departments, salary, and skills',
+      icon: Users, color: '#6366f1', gradient: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+    },
+    {
+      type: 'leaves', title: 'Leave Report', subtitle: 'All leave applications with status, dates, and remarks',
+      icon: CalendarDays, color: '#10b981', gradient: 'linear-gradient(135deg, #10b981, #059669)',
+    },
+    {
+      type: 'assets', title: 'Asset Report', subtitle: 'Full asset inventory with allocation status and purchase details',
+      icon: Package, color: '#f59e0b', gradient: 'linear-gradient(135deg, #f59e0b, #f97316)',
+    },
   ];
+
+  const FORMAT_CONFIG = {
+    csv:   { label: 'CSV',   desc: 'Spreadsheet compatible', color: '#10b981' },
+    excel: { label: 'Excel', desc: 'Formatted .xlsx',        color: '#3b82f6' },
+    pdf:   { label: 'PDF',   desc: 'Printable report',       color: '#ef4444' },
+  };
 
   return (
     <AppLayout>
-      <div style={{ animation: 'authCardEnter 0.4s ease forwards' }}>
-        {/* Header */}
-        <div style={{ marginBottom: 32 }}>
-          <h1 style={{
-            fontSize: 28,
-            fontWeight: 700,
-            color: 'var(--text-primary)',
-            marginBottom: 8,
-          }}>
-            Reports
-          </h1>
-          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-            Export data as PDF, Excel or CSV
-          </p>
+      <div style={{ animation: 'fadeInUp 0.4s ease forwards' }}>
+        <div style={{ marginBottom: 28 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>Reports</h1>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Export HR data in multiple formats for analysis and compliance</p>
         </div>
 
-        {/* Report Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
-          {reports.map(r => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginBottom: 20 }}>
+          {reports.map((r, i) => (
             <div
               key={r.type}
               style={{
-                background: 'var(--bg-surface)',
-                borderRadius: 'var(--radius-lg)',
-                padding: 24,
-                border: '1px solid var(--border)',
-                transition: 'all 0.2s ease',
+                background: 'var(--gradient-card)', borderRadius: 'var(--radius-xl)',
+                border: '1px solid var(--border)', overflow: 'hidden',
+                transition: 'var(--transition)',
+                animation: `fadeInUp 0.4s ease ${i * 0.1}s both`,
               }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; e.currentTarget.style.borderColor = 'var(--border-hover)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; e.currentTarget.style.borderColor = 'var(--border)'; }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-                <div style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 12,
-                  background: r.color + '22',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  <r.icon size={22} color={r.color} />
+              {/* Card header accent */}
+              <div style={{ height: 3, background: r.gradient }} />
+
+              <div style={{ padding: '22px 22px 20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+                  <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-lg)', background: r.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 4px 14px ${r.color}35` }}>
+                    <r.icon size={22} color="#fff" strokeWidth={2} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 3 }}>{r.title}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>{r.subtitle}</div>
+                  </div>
                 </div>
-                <div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{r.title}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{r.subtitle}</div>
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {['csv', 'excel', 'pdf'].map(fmt => {
+                    const fmtCfg = FORMAT_CONFIG[fmt];
+                    const isLoading = loading === r.type + '-' + fmt;
+                    return (
+                      <button
+                        key={fmt}
+                        onClick={() => handleExport(r.type, fmt)}
+                        disabled={Boolean(loading)}
+                        style={{
+                          flex: 1, padding: '9px 0',
+                          borderRadius: 'var(--radius-md)',
+                          border: `1px solid ${fmtCfg.color}30`,
+                          background: `${fmtCfg.color}0d`,
+                          color: fmtCfg.color,
+                          cursor: loading ? 'not-allowed' : 'pointer',
+                          fontSize: 11, fontWeight: 700,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                          textTransform: 'uppercase', letterSpacing: '0.08em',
+                          opacity: loading && !isLoading ? 0.5 : 1,
+                          transition: 'var(--transition)',
+                        }}
+                        onMouseEnter={e => { if (!loading) e.currentTarget.style.background = `${fmtCfg.color}1a`; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = `${fmtCfg.color}0d`; }}
+                      >
+                        {isLoading ? (
+                          <span style={{ width: 12, height: 12, border: `2px solid ${fmtCfg.color}40`, borderTopColor: fmtCfg.color, borderRadius: '50%', animation: 'spin-slow 0.7s linear infinite', display: 'inline-block' }} />
+                        ) : (
+                          <ArrowDown size={12} />
+                        )}
+                        {isLoading ? '...' : fmtCfg.label}
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
-              <div style={{ display: 'flex', gap: 10 }}>
-                {['csv', 'excel', 'pdf'].map(fmt => (
-                  <button
-                    key={fmt}
-                    onClick={() => handleExport(r.type, fmt)}
-                    disabled={loading === r.type + '-' + fmt}
-                    style={{
-                      flex: 1,
-                      padding: '10px 0',
-                      borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--border)',
-                      background: loading === r.type + '-' + fmt ? 'var(--bg-elevated)' : 'var(--bg-elevated)',
-                      color: 'var(--text-primary)',
-                      cursor: loading === r.type + '-' + fmt ? 'not-allowed' : 'pointer',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6,
-                      textTransform: 'uppercase',
-                      fontFamily: 'inherit',
-                      opacity: loading === r.type + '-' + fmt ? 0.7 : 1,
-                      transition: 'all 0.2s ease',
-                    }}
-                    onMouseEnter={e => loading !== r.type + '-' + fmt && (e.currentTarget.style.background = 'var(--bg-hover)')}
-                    onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-elevated)'}
-                  >
-                    <Download size={13} />
-                    {loading === r.type + '-' + fmt ? '...' : fmt}
-                  </button>
-                ))}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Instructions Card */}
-        <div style={{
-          background: 'var(--bg-surface)',
-          borderRadius: 'var(--radius-lg)',
-          padding: 24,
-          border: '1px solid var(--border)',
-          marginTop: 20,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-            <FileText size={18} color="var(--accent)" />
-            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Export Instructions</div>
+        <div style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', padding: '18px 22px', border: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <FileText size={16} color="var(--accent)" />
           </div>
-          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
-            • <strong>CSV</strong> — Opens in Excel, Google Sheets. Best for data analysis.<br />
-            • <strong>Excel</strong> — Formatted .xlsx file with proper columns.<br />
-            • <strong>PDF</strong> — Printable report with table formatting.
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>Export Guide</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.9 }}>
+              <span style={{ color: '#10b981', fontWeight: 600 }}>CSV</span> — Opens in Excel or Google Sheets. Best for data analysis and filtering. &nbsp;·&nbsp;
+              <span style={{ color: '#3b82f6', fontWeight: 600 }}>Excel</span> — Formatted .xlsx file with proper column structure. &nbsp;·&nbsp;
+              <span style={{ color: '#ef4444', fontWeight: 600 }}>PDF</span> — Printable report with table formatting, ideal for sharing.
+            </div>
           </div>
         </div>
       </div>

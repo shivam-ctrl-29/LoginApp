@@ -1,12 +1,20 @@
-// eslint-disable
+/* eslint-disable */
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Package, Plus, UserCheck, RotateCcw, Trash2, Eye, LayoutGrid, List, DollarSign } from 'lucide-react';
+import { Package, Plus, UserCheck, RotateCcw, Trash2, LayoutGrid, List, Pencil, Monitor, Keyboard, Mouse, Smartphone, CreditCard, Headphones } from 'lucide-react';
 import AppLayout from '../components/layout/AppLayout';
 import API_URL from '../config/api';
 
+const STATUS_CONFIG = {
+  available: { color: 'var(--success)', bg: 'var(--success-soft)', label: 'Available' },
+  allocated: { color: 'var(--warning)', bg: 'var(--warning-soft)', label: 'Allocated' },
+  returned:  { color: 'var(--accent)',  bg: 'var(--accent-soft)',  label: 'Returned' },
+  damaged:   { color: 'var(--danger)',  bg: 'var(--danger-soft)',  label: 'Damaged' },
+  lost:      { color: '#64748b',        bg: 'rgba(100,116,139,0.1)', label: 'Lost' },
+};
 
+const ASSET_ICONS = { Laptop: Monitor, Monitor, Keyboard, Mouse, Mobile: Smartphone, 'ID Card': CreditCard, Headset: Headphones };
 
 function Assets() {
   const navigate = useNavigate();
@@ -18,6 +26,7 @@ function Assets() {
   const [actionLoading, setActionLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [viewMode, setViewMode] = useState('table');
+  const [hoveredRow, setHoveredRow] = useState(null);
   const token = localStorage.getItem('token');
   const headers = { Authorization: token };
 
@@ -73,261 +82,161 @@ function Assets() {
 
   const openModal = (type, asset) => { setSelectedEmployee(''); setMsg(''); setModal({ type, asset }); };
 
-  const getStatusColor = (status) => {
-    const colors = {
-      'available': '#22c55e',
-      'allocated': '#f59e0b',
-      'returned': '#6366f1',
-      'damaged': '#ef4444',
-      'lost': '#ef4444',
-    };
-    return colors[status] || '#64748b';
-  };
+  const getAssetIcon = (type) => ASSET_ICONS[type] || Package;
 
-  const getStatusBg = (status) => {
-    const colors = {
-      'available': 'rgba(34,197,94,0.12)',
-      'allocated': 'rgba(245,158,11,0.12)',
-      'returned': 'rgba(99,102,241,0.12)',
-      'damaged': 'rgba(239,68,68,0.12)',
-      'lost': 'rgba(239,68,68,0.12)',
-    };
-    return colors[status] || 'rgba(100,116,139,0.12)';
-  };
-
-  if (loading) {
-    return (
-      <AppLayout>
-        <div style={{ color: 'var(--text-secondary)', padding: 40, textAlign: 'center' }}>Loading assets...</div>
-      </AppLayout>
-    );
-  }
+  const available = assets.filter(a => a.status === 'available').length;
+  const allocated = assets.filter(a => a.status === 'allocated').length;
 
   return (
     <AppLayout>
-      <div style={{ animation: 'authCardEnter 0.4s ease forwards' }}>
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+      <div style={{ animation: 'fadeInUp 0.4s ease forwards' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
           <div>
-            <h1 style={{
-              fontSize: 28,
-              fontWeight: 700,
-              color: 'var(--text-primary)',
-              marginBottom: 8,
-            }}>
-              Asset Management
-            </h1>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-              Track, assign and return company assets
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: 12 }}>
-            {/* View Toggle */}
-            <div style={{
-              display: 'flex',
-              background: 'var(--bg-elevated)',
-              borderRadius: 'var(--radius-md)',
-              padding: 4,
-              border: '1px solid var(--border)',
-            }}>
-              <button
-                onClick={() => setViewMode('table')}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: 6,
-                  border: 'none',
-                  background: viewMode === 'table' ? 'var(--bg-surface)' : 'transparent',
-                  color: viewMode === 'table' ? 'var(--text-primary)' : 'var(--text-muted)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <List size={16} />
-              </button>
-              <button
-                onClick={() => setViewMode('card')}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: 6,
-                  border: 'none',
-                  background: viewMode === 'card' ? 'var(--bg-surface)' : 'transparent',
-                  color: viewMode === 'card' ? 'var(--text-primary)' : 'var(--text-muted)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <LayoutGrid size={16} />
-              </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+              <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Assets</h1>
+              <div style={{ padding: '3px 10px', borderRadius: 'var(--radius-full)', background: 'var(--accent-soft)', color: 'var(--accent)', fontSize: 12, fontWeight: 700 }}>{assets.length}</div>
             </div>
-            <button
-              onClick={() => navigate('/assets/add')}
-              style={{
-                padding: '12px 20px',
-                borderRadius: 'var(--radius-md)',
-                border: 'none',
-                background: 'var(--gradient)',
-                color: '#fff',
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={e => e.target.style.filter = 'brightness(1.1)'}
-              onMouseLeave={e => e.target.style.filter = 'brightness(1)'}
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{available} available · {allocated} allocated</p>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+              {[{ mode: 'table', Icon: List }, { mode: 'grid', Icon: LayoutGrid }].map(({ mode, Icon }) => (
+                <button key={mode} onClick={() => setViewMode(mode)} style={{ padding: '8px 12px', border: 'none', background: viewMode === mode ? 'var(--accent-soft)' : 'transparent', color: viewMode === mode ? 'var(--accent)' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', transition: 'var(--transition)' }}>
+                  <Icon size={16} />
+                </button>
+              ))}
+            </div>
+            <button onClick={() => navigate('/assets/add')} style={{ padding: '10px 18px', borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--gradient)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7, boxShadow: 'var(--shadow-accent)', transition: 'var(--transition)' }}
+              onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.1)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.filter = ''; e.currentTarget.style.transform = ''; }}
             >
-              <Plus size={18} />
-              Add Asset
+              <Plus size={15} /> Add Asset
             </button>
           </div>
         </div>
 
-        {msg && <div style={{ padding: '12px 16px', marginBottom: 16, borderRadius: 'var(--radius-md)', background: msg.includes('success') ? 'var(--success-soft)' : 'var(--danger-soft)', color: msg.includes('success') ? 'var(--success)' : 'var(--danger)', fontSize: 14 }}>{msg}</div>}
-
-        {assets.length === 0 ? (
-          <div style={{
-            background: 'var(--bg-surface)',
-            borderRadius: 'var(--radius-lg)',
-            padding: 80,
-            textAlign: 'center',
-            border: '1px solid var(--border)',
-          }}>
-            <Package size={48} color="var(--text-muted)" style={{ marginBottom: 12 }} />
-            <div style={{ color: 'var(--text-secondary)', fontSize: 15 }}>No assets found. Add your first asset!</div>
-          </div>
-        ) : viewMode === 'table' ? (
-          /* Table View */
-          <div style={{
-            background: 'var(--bg-surface)',
-            borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--border)',
-            overflow: 'hidden',
-          }}>
+        {viewMode === 'table' ? (
+          <div style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead style={{ background: 'var(--bg-elevated)' }}>
-                <tr>
-                  {['Code', 'Name', 'Type', 'Purchase Cost', 'Status', 'Actions'].map(h => (
-                    <th key={h} style={{ padding: '16px 20px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--border)' }}>{h}</th>
+              <thead>
+                <tr style={{ background: 'var(--bg-elevated)' }}>
+                  {['Asset', 'Type', 'Status', 'Assigned To', 'Actions'].map((h, i) => (
+                    <th key={i} style={{ padding: '13px 20px', textAlign: i === 4 ? 'right' : 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', borderBottom: '1px solid var(--border)' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {assets.map(asset => (
-                  <tr key={asset.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '16px 20px', fontSize: 14, color: 'var(--text-secondary)' }}>{asset.assetCode}</td>
-                    <td style={{ padding: '16px 20px', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{asset.assetName}</td>
-                    <td style={{ padding: '16px 20px', fontSize: 14, color: 'var(--text-secondary)' }}>{asset.assetType}</td>
-                    <td style={{ padding: '16px 20px', fontSize: 14, color: 'var(--text-secondary)' }}>{asset.purchaseCost ? '₹' + Number(asset.purchaseCost).toLocaleString('en-IN') : '-'}</td>
-                    <td style={{ padding: '16px 20px' }}>
-                      <span style={{
-                        padding: '4px 12px',
-                        borderRadius: 12,
-                        background: getStatusBg(asset.status),
-                        color: getStatusColor(asset.status),
-                        fontSize: 12,
-                        fontWeight: 600,
-                        textTransform: 'capitalize',
-                      }}>{asset.status}</span>
-                    </td>
-                    <td style={{ padding: '16px 20px' }}>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={() => navigate('/assets/edit/' + asset.id)} style={{ background: 'var(--accent-soft)', border: 'none', borderRadius: 6, padding: '6px 8px', cursor: 'pointer', color: 'var(--accent)' }}><Eye size={15} /></button>
-                        {asset.status === 'available' && <button onClick={() => openModal('allocate', asset)} style={{ background: 'var(--warning-soft)', border: 'none', borderRadius: 6, padding: '6px 8px', cursor: 'pointer', color: 'var(--warning)' }}><UserCheck size={15} /></button>}
-                        {asset.status === 'allocated' && <button onClick={() => openModal('return', asset)} style={{ background: 'var(--success-soft)', border: 'none', borderRadius: 6, padding: '6px 8px', cursor: 'pointer', color: 'var(--success)' }}><RotateCcw size={15} /></button>}
-                        <button onClick={() => handleDelete(asset.id)} style={{ background: 'var(--danger-soft)', border: 'none', borderRadius: 6, padding: '6px 8px', cursor: 'pointer', color: 'var(--danger)' }}><Trash2 size={15} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {assets.map(asset => {
+                  const st = STATUS_CONFIG[asset.status] || STATUS_CONFIG.available;
+                  const AssetIcon = getAssetIcon(asset.assetType);
+                  return (
+                    <tr key={asset.id} onMouseEnter={() => setHoveredRow(asset.id)} onMouseLeave={() => setHoveredRow(null)}
+                      style={{ borderBottom: '1px solid var(--border)', height: 60, background: hoveredRow === asset.id ? 'var(--bg-hover)' : 'transparent', transition: 'background 0.15s' }}>
+                      <td style={{ padding: '0 20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <AssetIcon size={16} color="var(--accent)" />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{asset.assetName}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{asset.assetCode}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '0 20px', fontSize: 13, color: 'var(--text-secondary)' }}>{asset.assetType}</td>
+                      <td style={{ padding: '0 20px' }}>
+                        <span style={{ padding: '3px 10px', borderRadius: 'var(--radius-full)', background: st.bg, color: st.color, fontSize: 11, fontWeight: 600 }}>{st.label}</span>
+                      </td>
+                      <td style={{ padding: '0 20px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                        {asset.allocations?.length > 0 ? asset.allocations.map(a => a.user?.name).join(', ') : '—'}
+                      </td>
+                      <td style={{ padding: '0 20px', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                          <button onClick={() => navigate('/assets/edit/' + asset.id)} style={{ padding: '5px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, transition: 'var(--transition)' }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-elevated)'}
+                          ><Pencil size={12} /> Edit</button>
+                          {asset.status === 'available' && (
+                            <button onClick={() => openModal('allocate', asset)} style={{ padding: '5px 10px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent-soft)', color: 'var(--accent)', fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, transition: 'var(--transition)' }}>
+                              <UserCheck size={12} /> Allocate
+                            </button>
+                          )}
+                          {asset.status === 'allocated' && (
+                            <button onClick={() => openModal('return', asset)} style={{ padding: '5px 10px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--warning-soft)', color: 'var(--warning)', fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, transition: 'var(--transition)' }}>
+                              <RotateCcw size={12} /> Return
+                            </button>
+                          )}
+                          <button onClick={() => handleDelete(asset.id)} style={{ padding: '5px 10px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, transition: 'var(--transition)' }}>
+                            <Trash2 size={12} /> Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
+            {assets.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)', fontSize: 13 }}>
+                <Package size={36} style={{ marginBottom: 12, opacity: 0.4 }} />
+                <div>No assets found. Add your first asset!</div>
+              </div>
+            )}
           </div>
         ) : (
-          /* Card View */
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
-            {assets.map(asset => (
-              <div
-                key={asset.id}
-                style={{
-                  background: 'var(--bg-surface)',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: 24,
-                  border: '1px solid var(--border)',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                  <div style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 12,
-                    background: 'var(--gradient)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    <Package size={24} color="#fff" />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
+            {assets.map((asset, i) => {
+              const st = STATUS_CONFIG[asset.status] || STATUS_CONFIG.available;
+              const AssetIcon = getAssetIcon(asset.assetType);
+              return (
+                <div key={asset.id} style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', padding: 18, transition: 'var(--transition)', animation: `fadeInUp 0.3s ease ${i * 0.04}s both`, cursor: 'pointer' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-hover)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                    <div style={{ width: 42, height: 42, borderRadius: 'var(--radius-md)', background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <AssetIcon size={20} color="var(--accent)" />
+                    </div>
+                    <span style={{ padding: '3px 8px', borderRadius: 'var(--radius-full)', background: st.bg, color: st.color, fontSize: 10, fontWeight: 700 }}>{st.label}</span>
                   </div>
-                  <span style={{
-                    padding: '4px 12px',
-                    borderRadius: 12,
-                    background: getStatusBg(asset.status),
-                    color: getStatusColor(asset.status),
-                    fontSize: 12,
-                    fontWeight: 600,
-                    textTransform: 'capitalize',
-                  }}>{asset.status}</span>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 3 }}>{asset.assetName}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>{asset.assetCode} · {asset.assetType}</div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={() => navigate('/assets/edit/' + asset.id)} style={{ flex: 1, padding: '6px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontSize: 11, cursor: 'pointer', transition: 'var(--transition)' }}>Edit</button>
+                    {asset.status === 'available' && <button onClick={() => openModal('allocate', asset)} style={{ flex: 1, padding: '6px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent-soft)', color: 'var(--accent)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Allocate</button>}
+                    {asset.status === 'allocated' && <button onClick={() => openModal('return', asset)} style={{ flex: 1, padding: '6px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--warning-soft)', color: 'var(--warning)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Return</button>}
+                  </div>
                 </div>
-                <h3 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>{asset.assetName}</h3>
-                <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--text-muted)' }}>{asset.assetCode}</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
-                  <DollarSign size={14} color="var(--text-muted)" />
-                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {asset.purchaseCost ? '₹' + Number(asset.purchaseCost).toLocaleString('en-IN') : '-'}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => navigate('/assets/edit/' + asset.id)} style={{ flex: 1, padding: '8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>Edit</button>
-                  {asset.status === 'available' && <button onClick={() => openModal('allocate', asset)} style={{ flex: 1, padding: '8px', borderRadius: 6, border: 'none', background: 'var(--warning)', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>Allocate</button>}
-                  {asset.status === 'allocated' && <button onClick={() => openModal('return', asset)} style={{ flex: 1, padding: '8px', borderRadius: 6, border: 'none', background: 'var(--success)', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>Return</button>}
-                  <button onClick={() => handleDelete(asset.id)} style={{ padding: '8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}><Trash2 size={14} /></button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
+        {/* Modal */}
         {modal && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-            <div style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', padding: 32, width: 420, maxWidth: '90vw', border: '1px solid var(--border)' }}>
-              <h3 style={{ margin: '0 0 8px', color: 'var(--text-primary)', fontSize: 18, fontWeight: 700 }}>
+          <div style={{ position: 'fixed', inset: 0, top: 56, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 950, backdropFilter: 'blur(4px)' }}>
+            <div style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius-xl)', padding: 28, maxWidth: 380, width: '90%', border: '1px solid var(--border)', boxShadow: 'var(--shadow-lg)', animation: 'modalEnter 0.25s ease' }}>
+              <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
                 {modal.type === 'allocate' ? 'Allocate Asset' : 'Return Asset'}
               </h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 20 }}>
-                Asset: <strong style={{ color: 'var(--text-primary)' }}>{modal.asset.assetName}</strong> ({modal.asset.assetCode})
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>
+                {modal.asset.assetName} — {modal.asset.assetCode}
               </p>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Select Employee</label>
-              <select value={selectedEmployee} onChange={e => setSelectedEmployee(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontSize: 14, marginBottom: 16, boxSizing: 'border-box', cursor: 'pointer' }}>
-                <option value="">-- Choose Employee --</option>
-                {employees.map(emp => (
-                  <option key={emp.userId || emp.id} value={emp.userId || emp.id}>{emp.name || emp.user?.name} - {emp.designation || 'N/A'}</option>
-                ))}
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 7 }}>
+                {modal.type === 'allocate' ? 'Select Employee' : 'Select Employee to Return From'}
+              </label>
+              <select value={selectedEmployee} onChange={e => setSelectedEmployee(e.target.value)}
+                style={{ width: '100%', height: 42, padding: '0 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 14, outline: 'none', marginBottom: 16 }}>
+                <option value="">Choose employee...</option>
+                {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
               </select>
-              {msg && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 12 }}>{msg}</div>}
-              <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-                <button onClick={modal.type === 'allocate' ? handleAllocate : handleReturn} disabled={actionLoading} style={{ flex: 1, padding: '12px 0', background: modal.type === 'allocate' ? 'var(--warning)' : 'var(--success)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 600, fontSize: 14, fontFamily: 'inherit', opacity: actionLoading ? 0.7 : 1 }}>
-                  {actionLoading ? 'Processing...' : modal.type === 'allocate' ? 'Allocate' : 'Return'}
+              {msg && <div style={{ padding: '8px 12px', borderRadius: 'var(--radius-sm)', background: msg.includes('Error') || msg.includes('Please') ? 'var(--danger-soft)' : 'var(--success-soft)', color: msg.includes('Error') || msg.includes('Please') ? 'var(--danger)' : 'var(--success)', fontSize: 12, marginBottom: 16 }}>{msg}</div>}
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button onClick={() => setModal(null)} style={{ padding: '9px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 13, cursor: 'pointer', transition: 'var(--transition)' }}>Cancel</button>
+                <button onClick={modal.type === 'allocate' ? handleAllocate : handleReturn} disabled={actionLoading}
+                  style={{ padding: '9px 16px', borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--gradient)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: actionLoading ? 'not-allowed' : 'pointer', boxShadow: 'var(--shadow-accent)' }}>
+                  {actionLoading ? 'Processing...' : (modal.type === 'allocate' ? 'Allocate' : 'Return')}
                 </button>
-                <button onClick={() => setModal(null)} style={{ flex: 1, padding: '12px 0', background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 600, fontSize: 14, fontFamily: 'inherit' }}>Cancel</button>
               </div>
             </div>
           </div>

@@ -1,7 +1,7 @@
 /* eslint-disable */
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { DollarSign, Download, FileText, TrendingDown, Calendar, CheckCircle } from 'lucide-react';
+import { DollarSign, Download, TrendingDown, Calendar, CheckCircle, X } from 'lucide-react';
 import AppLayout from '../components/layout/AppLayout';
 import API_URL from '../config/api';
 import jsPDF from 'jspdf';
@@ -30,12 +30,11 @@ function Payroll() {
   };
 
   const months = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-IN');
 
   const downloadSlip = (payroll) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
-
-    // Header
     doc.setFillColor(99, 102, 241);
     doc.rect(0, 0, pageWidth, 40, 'F');
     doc.setTextColor(255, 255, 255);
@@ -46,8 +45,6 @@ function Payroll() {
     doc.setFont('helvetica', 'normal');
     doc.text('SALARY SLIP', 14, 30);
     doc.text(`${months[payroll.month]} ${payroll.year}`, pageWidth - 14, 30, { align: 'right' });
-
-    // Employee Info
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
@@ -58,12 +55,9 @@ function Payroll() {
     doc.text(`Email: ${payroll.user?.email || 'N/A'}`, 14, 73);
     doc.text(`Slip No: ${payroll.salarySlip?.slipNumber || 'N/A'}`, pageWidth - 14, 65, { align: 'right' });
     doc.text(`Status: ${payroll.status.toUpperCase()}`, pageWidth - 14, 73, { align: 'right' });
-
-    // Attendance Summary
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.text('Attendance Summary', 14, 88);
-
     autoTable(doc, {
       startY: 93,
       head: [['Working Days', 'Present', 'Late', 'Absent']],
@@ -71,145 +65,155 @@ function Payroll() {
       headStyles: { fillColor: [99, 102, 241] },
       styles: { fontSize: 10 },
     });
-
-    // Salary Breakdown
     const finalY = doc.lastAutoTable.finalY + 10;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.text('Salary Breakdown', 14, finalY);
-
     autoTable(doc, {
       startY: finalY + 5,
       head: [['Component', 'Amount (₹)']],
       body: [
-        ['Gross Salary', `₹${Number(payroll.grossSalary).toLocaleString('en-IN')}`],
-        ['Absent Deduction', `-₹${Number(payroll.absentDeduction).toLocaleString('en-IN')}`],
-        ['Late Deduction', `-₹${Number(payroll.lateDeduction).toLocaleString('en-IN')}`],
-        ['PF Deduction (12%)', `-₹${Number(payroll.pfDeduction).toLocaleString('en-IN')}`],
-        ['ESIC Deduction (0.75%)', `-₹${Number(payroll.esicDeduction).toLocaleString('en-IN')}`],
-        ['Total Deductions', `-₹${Number(payroll.totalDeductions).toLocaleString('en-IN')}`],
+        ['Gross Salary', `₹${fmt(payroll.grossSalary)}`],
+        ['Absent Deduction', `-₹${fmt(payroll.absentDeduction)}`],
+        ['Late Deduction', `-₹${fmt(payroll.lateDeduction)}`],
+        ['PF Deduction (12%)', `-₹${fmt(payroll.pfDeduction)}`],
+        ['ESIC Deduction (0.75%)', `-₹${fmt(payroll.esicDeduction)}`],
+        ['Total Deductions', `-₹${fmt(payroll.totalDeductions)}`],
       ],
       headStyles: { fillColor: [99, 102, 241] },
       styles: { fontSize: 10 },
     });
-
-    // Net Salary
-    const netY = doc.lastAutoTable.finalY + 5;
+    const y2 = doc.lastAutoTable.finalY + 8;
     doc.setFillColor(99, 102, 241);
-    doc.rect(14, netY, pageWidth - 28, 14, 'F');
+    doc.rect(14, y2, pageWidth - 28, 12, 'F');
     doc.setTextColor(255, 255, 255);
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.text('NET SALARY (TDC)', 20, netY + 9);
-    doc.text(`₹${Number(payroll.netSalary).toLocaleString('en-IN')}`, pageWidth - 20, netY + 9, { align: 'right' });
-
-    // Footer
-    doc.setTextColor(150, 150, 150);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text('This is a computer generated salary slip. No signature required.', pageWidth / 2, 280, { align: 'center' });
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, pageWidth / 2, 286, { align: 'center' });
-
+    doc.text('NET SALARY (TDC)', 18, y2 + 8);
+    doc.text(`₹${fmt(payroll.netSalary)}`, pageWidth - 18, y2 + 8, { align: 'right' });
     doc.save(`Salary_Slip_${months[payroll.month]}_${payroll.year}.pdf`);
   };
 
+  const MONTH_GRADIENTS = [
+    'linear-gradient(135deg, #6366f1, #8b5cf6)',
+    'linear-gradient(135deg, #10b981, #059669)',
+    'linear-gradient(135deg, #f59e0b, #f97316)',
+    'linear-gradient(135deg, #3b82f6, #6366f1)',
+    'linear-gradient(135deg, #ec4899, #8b5cf6)',
+    'linear-gradient(135deg, #14b8a6, #3b82f6)',
+  ];
+
   return (
     <AppLayout>
-      <div>
-        {/* Header */}
-        <div style={{ marginBottom: 32 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>My Payroll</h1>
-          <p style={{ fontSize: 15, color: 'var(--text-secondary)' }}>View and download your salary slips</p>
+      <div style={{ animation: 'fadeInUp 0.4s ease forwards' }}>
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>My Payroll</h1>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{payrolls.length} salary slip{payrolls.length !== 1 ? 's' : ''} available</p>
         </div>
 
-        {/* Payroll Cards */}
-        {payrolls.length === 0 ? (
-          <div style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', padding: 80, textAlign: 'center' }}>
-            <FileText size={48} color='var(--text-muted)' style={{ marginBottom: 16 }} />
-            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>No payroll records yet</div>
-            <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Your salary slips will appear here once generated by HR</div>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>Loading payroll...</div>
+        ) : payrolls.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border)' }}>
+            <DollarSign size={40} color="var(--text-muted)" style={{ marginBottom: 12 }} />
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-secondary)' }}>No payroll records yet</div>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
-            {payrolls.map((payroll, idx) => (
-              <div key={idx} style={{
-                background: 'var(--bg-surface)',
-                borderRadius: 'var(--radius-lg)',
-                border: '1px solid var(--border)',
-                overflow: 'hidden',
-                transition: 'all 0.2s ease',
-                cursor: 'pointer',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+            {payrolls.map((p, i) => (
+              <div
+                key={p.id}
+                style={{
+                  background: 'var(--gradient-card)', borderRadius: 'var(--radius-xl)',
+                  border: '1px solid var(--border)', overflow: 'hidden',
+                  transition: 'var(--transition)',
+                  animation: `fadeInUp 0.3s ease ${i * 0.06}s both`,
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; e.currentTarget.style.borderColor = 'var(--border-hover)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; e.currentTarget.style.borderColor = 'var(--border)'; }}
+                onClick={() => setSelected(p)}
               >
-                {/* Card Header */}
-                <div style={{ background: 'var(--gradient)', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>{months[payroll.month]} {payroll.year}</div>
-                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>{payroll.salarySlip?.slipNumber || 'Pending'}</div>
+                {/* Card header */}
+                <div style={{ background: MONTH_GRADIENTS[i % MONTH_GRADIENTS.length], padding: '18px 20px', position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', top: -30, right: -20, pointerEvents: 'none' }} />
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.1em', marginBottom: 4 }}>{p.year}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>{months[p.month]}</div>
+                  <div style={{ marginTop: 8, display: 'inline-flex', padding: '3px 8px', borderRadius: 'var(--radius-full)', background: 'rgba(255,255,255,0.2)', fontSize: 10, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    {p.status}
                   </div>
-                  <span style={{ padding: '4px 10px', borderRadius: 20, background: payroll.status === 'paid' ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.2)', color: '#fff', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>
-                    {payroll.status}
-                  </span>
                 </div>
 
-                {/* Card Body */}
-                <div style={{ padding: 20 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                    {[
-                      { label: 'Gross Salary', value: `₹${Number(payroll.grossSalary).toLocaleString('en-IN')}`, color: 'var(--text-primary)' },
-                      { label: 'Net Salary (TDC)', value: `₹${Number(payroll.netSalary).toLocaleString('en-IN')}`, color: 'var(--success)' },
-                      { label: 'Total Deductions', value: `₹${Number(payroll.totalDeductions).toLocaleString('en-IN')}`, color: 'var(--danger)' },
-                      { label: 'PF Deduction', value: `₹${Number(payroll.pfDeduction).toLocaleString('en-IN')}`, color: 'var(--warning)' },
-                    ].map((item, i) => (
-                      <div key={i} style={{ background: 'var(--bg-elevated)', borderRadius: 8, padding: 12 }}>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>{item.label}</div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: item.color, fontFamily: 'monospace' }}>{item.value}</div>
+                {/* Card body */}
+                <div style={{ padding: '16px 20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, marginBottom: 2 }}>Net Salary</div>
+                      <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'monospace', letterSpacing: '-0.02em' }}>
+                        ₹{fmt(p.netSalary)}
                       </div>
-                    ))}
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, marginBottom: 2 }}>Deductions</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--danger)', fontFamily: 'monospace' }}>
+                        -₹{fmt(p.totalDeductions)}
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Attendance Row */}
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                    {[
-                      { label: 'P', value: payroll.presentDays, color: 'var(--success)', bg: 'var(--success-soft)' },
-                      { label: 'L', value: payroll.lateDays, color: 'var(--warning)', bg: 'var(--warning-soft)' },
-                      { label: 'A', value: payroll.absentDays, color: 'var(--danger)', bg: 'var(--danger-soft)' },
-                    ].map((item, i) => (
-                      <div key={i} style={{ flex: 1, background: item.bg, borderRadius: 8, padding: '8px 12px', textAlign: 'center' }}>
-                        <div style={{ fontSize: 16, fontWeight: 700, color: item.color }}>{item.value}</div>
-                        <div style={{ fontSize: 10, color: item.color, fontWeight: 600 }}>{item.label === 'P' ? 'Present' : item.label === 'L' ? 'Late' : 'Absent'}</div>
-                      </div>
-                    ))}
+                  <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--text-muted)', marginBottom: 14 }}>
+                    <span>{p.presentDays || 0}P</span>
+                    <span>·</span>
+                    <span>{p.lateDays || 0}L</span>
+                    <span>·</span>
+                    <span>{p.absentDays || 0}A</span>
                   </div>
 
-                  {/* Download Button */}
                   <button
-                    onClick={() => downloadSlip(payroll)}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      borderRadius: 'var(--radius-md)',
-                      border: 'none',
-                      background: 'var(--gradient)',
-                      color: '#fff',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 8,
-                      fontFamily: 'inherit',
-                    }}
+                    onClick={e => { e.stopPropagation(); downloadSlip(p); }}
+                    style={{ width: '100%', padding: '9px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'var(--transition)' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-elevated)'}
                   >
-                    <Download size={16} />
-                    Download Salary Slip PDF
+                    <Download size={13} /> Download Slip
                   </button>
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Detail modal */}
+        {selected && (
+          <div style={{ position: 'fixed', inset: 0, top: 56, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 950, backdropFilter: 'blur(6px)' }}>
+            <div style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius-2xl)', padding: 0, maxWidth: 440, width: '90%', border: '1px solid var(--border)', boxShadow: 'var(--shadow-lg)', animation: 'modalEnter 0.25s ease', overflow: 'hidden' }}>
+              <div style={{ background: 'var(--gradient)', padding: '22px 26px', position: 'relative' }}>
+                <button onClick={() => setSelected(null)} style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
+                  <X size={14} />
+                </button>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: 600, letterSpacing: '0.1em' }}>{selected.year}</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 6 }}>{months[selected.month]} Salary Slip</div>
+                <div style={{ fontSize: 28, fontWeight: 900, color: '#fff', fontFamily: 'monospace' }}>₹{fmt(selected.netSalary)}</div>
+              </div>
+              <div style={{ padding: '20px 26px' }}>
+                {[
+                  ['Gross Salary', `₹${fmt(selected.grossSalary)}`, ''],
+                  ['Absent Deduction', `-₹${fmt(selected.absentDeduction)}`, 'var(--danger)'],
+                  ['Late Deduction', `-₹${fmt(selected.lateDeduction)}`, 'var(--danger)'],
+                  ['PF (12%)', `-₹${fmt(selected.pfDeduction)}`, 'var(--danger)'],
+                  ['ESIC (0.75%)', `-₹${fmt(selected.esicDeduction)}`, 'var(--danger)'],
+                  ['Total Deductions', `-₹${fmt(selected.totalDeductions)}`, 'var(--danger)'],
+                ].map(([label, value, color], i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: i < 5 ? '1px solid var(--border)' : 'none' }}>
+                    <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: color || 'var(--text-primary)', fontFamily: 'monospace' }}>{value}</span>
+                  </div>
+                ))}
+                <button onClick={() => downloadSlip(selected)} style={{ width: '100%', marginTop: 16, padding: '11px', borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--gradient)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, boxShadow: 'var(--shadow-accent)' }}>
+                  <Download size={15} /> Download PDF
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -1,21 +1,32 @@
+/* eslint-disable */
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { Save, Upload, X, Check } from 'lucide-react';
+import { Save, Upload, X, Check, ArrowLeft } from 'lucide-react';
 import AppLayout from '../components/layout/AppLayout';
-import PageHeader from '../components/ui/PageHeader';
-import GlassCard from '../components/ui/GlassCard';
-import { FloatingInput, FloatingSelect } from '../components/ui/FloatingInput';
-import Button from '../components/ui/Button';
 import { useToast } from '../context/ToastContext';
-import { useTheme } from '../theme/ThemeContext';
 import API_URL from '../config/api';
+
+const fieldStyle = (focused) => ({
+  width: '100%', height: 44, padding: '0 14px',
+  borderRadius: 'var(--radius-md)',
+  border: focused ? '1px solid var(--accent)' : '1px solid var(--border)',
+  background: 'var(--bg-elevated)', color: 'var(--text-primary)',
+  fontSize: 14, outline: 'none', transition: 'var(--transition)',
+  boxShadow: focused ? '0 0 0 3px var(--accent-glow)' : 'none',
+});
+
+const LabeledField = ({ label, children }) => (
+  <div>
+    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>{label}</label>
+    {children}
+  </div>
+);
 
 function EditEmployee() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const { theme } = useTheme();
   const [departments, setDepartments] = useState([]);
   const [skills, setSkills] = useState([]);
   const [selectedSkills, setSelectedSkills] = useState([]);
@@ -24,12 +35,9 @@ function EditEmployee() {
   const [existingImages, setExistingImages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const [focusedField, setFocusedField] = useState('');
   const [form, setForm] = useState({
-    department_id: '',
-    phone: '',
-    address: '',
-    designation: '',
-    salary: '',
+    department_id: '', phone: '', address: '', designation: '', salary: '',
   });
 
   useEffect(() => {
@@ -42,13 +50,7 @@ function EditEmployee() {
       setDepartments(deptRes.data);
       setSkills(skillRes.data);
       const emp = empRes.data.employee || empRes.data;
-      setForm({
-        department_id: emp.department_id || '',
-        phone: emp.phone || '',
-        address: emp.address || '',
-        designation: emp.designation || '',
-        salary: emp.salary || '',
-      });
+      setForm({ department_id: emp.department_id || '', phone: emp.phone || '', address: emp.address || '', designation: emp.designation || '', salary: emp.salary || '' });
       setSelectedSkills((emp.skills || []).map(s => s.id));
       setExistingImages(emp.images || []);
     }).catch(console.error).finally(() => setFetching(false));
@@ -57,9 +59,7 @@ function EditEmployee() {
   const updateForm = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
 
   const handleSkillToggle = (skillId) => {
-    setSelectedSkills(prev =>
-      prev.includes(skillId) ? prev.filter(s => s !== skillId) : [...prev, skillId]
-    );
+    setSelectedSkills(prev => prev.includes(skillId) ? prev.filter(s => s !== skillId) : [...prev, skillId]);
   };
 
   const handleImageChange = (e) => {
@@ -75,26 +75,16 @@ function EditEmployee() {
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
-    if (!form.department_id) {
-      toast.warning('Please select a department');
-      return;
-    }
+    if (!form.department_id) { toast.warning('Please select a department'); return; }
     setLoading(true);
     const token = localStorage.getItem('token');
     try {
-      await axios.put(`${API_URL}/api/v1/employees/${id}`, {
-        ...form,
-        skill_ids: selectedSkills,
-      }, { headers: { Authorization: token } });
-
+      await axios.put(`${API_URL}/api/v1/employees/${id}`, { ...form, skill_ids: selectedSkills }, { headers: { Authorization: token } });
       if (images.length > 0) {
         const formData = new FormData();
         images.forEach(img => formData.append('images', img));
-        await axios.post(`${API_URL}/api/v1/employees/upload/${id}`, formData, {
-          headers: { Authorization: token, 'Content-Type': 'multipart/form-data' },
-        });
+        await axios.post(`${API_URL}/api/v1/employees/upload/${id}`, formData, { headers: { Authorization: token, 'Content-Type': 'multipart/form-data' } });
       }
-
       toast.success('Employee updated successfully!');
       setTimeout(() => navigate('/employees'), 800);
     } catch (err) {
@@ -104,140 +94,110 @@ function EditEmployee() {
     }
   };
 
-  if (fetching) return (
-    <AppLayout>
-      <div style={{ padding: 40, textAlign: 'center' }}>Loading employee data...</div>
-    </AppLayout>
-  );
+  const inputProps = (key) => ({
+    value: form[key],
+    onChange: e => updateForm(key, e.target.value),
+    onFocus: () => setFocusedField(key),
+    onBlur: () => setFocusedField(''),
+    style: fieldStyle(focusedField === key),
+  });
+
+  if (fetching) {
+    return <AppLayout><div style={{ display: 'flex', justifyContent: 'center', padding: 80, color: 'var(--text-muted)', fontSize: 14 }}>Loading employee...</div></AppLayout>;
+  }
 
   return (
     <AppLayout>
-      <PageHeader
-        title="Edit Employee"
-        subtitle="Update employee details"
-      />
-
-      <GlassCard style={{ padding: 32, maxWidth: 640 }}>
-        <form onSubmit={handleSubmit}>
-          <FloatingSelect
-            label="Department"
-            value={form.department_id}
-            onChange={e => updateForm('department_id', e.target.value)}
-            required
+      <div style={{ maxWidth: 680, margin: '0 auto', animation: 'fadeInUp 0.4s ease forwards' }}>
+        <div style={{ marginBottom: 24 }}>
+          <button
+            onClick={() => navigate('/employees')}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, marginBottom: 14, padding: 0 }}
+            onMouseEnter={e => e.currentTarget.style.color = 'var(--text-primary)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
           >
-            <option value="">Select Department</option>
-            {departments.map(d => (
-              <option key={d.id} value={d.id}>{d.department_name}</option>
-            ))}
-          </FloatingSelect>
+            <ArrowLeft size={15} /> Back to Employees
+          </button>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 4 }}>Edit Employee</h1>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Update employee information and work details</p>
+        </div>
 
-          <FloatingInput
-            label="Phone Number"
-            value={form.phone}
-            onChange={e => updateForm('phone', e.target.value)}
-          />
-          <FloatingInput
-            label="Address"
-            value={form.address}
-            onChange={e => updateForm('address', e.target.value)}
-          />
-          <FloatingInput
-            label="Designation"
-            value={form.designation}
-            onChange={e => updateForm('designation', e.target.value)}
-            required
-          />
-          <FloatingInput
-            label="Salary (₹)"
-            type="number"
-            value={form.salary}
-            onChange={e => updateForm('salary', e.target.value)}
-            required
-          />
+        <div style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border)', padding: '32px', boxShadow: 'var(--shadow-md)' }}>
+          <div style={{ marginBottom: 28 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 18 }}>Work Details</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+              <LabeledField label="Department *">
+                <select {...inputProps('department_id')}>
+                  <option value="">Select department</option>
+                  {departments.map(d => <option key={d.id} value={d.id}>{d.department_name || d.name}</option>)}
+                </select>
+              </LabeledField>
+              <LabeledField label="Designation">
+                <input type="text" placeholder="e.g. Senior Engineer" {...inputProps('designation')} />
+              </LabeledField>
+              <LabeledField label="Phone">
+                <input type="tel" placeholder="+91 9876543210" {...inputProps('phone')} />
+              </LabeledField>
+              <LabeledField label="Salary (₹)">
+                <input type="number" placeholder="50000" {...inputProps('salary')} />
+              </LabeledField>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <LabeledField label="Address">
+                  <input type="text" placeholder="City, State" {...inputProps('address')} />
+                </LabeledField>
+              </div>
+            </div>
+          </div>
 
-          {/* Skills */}
-          <div style={{ marginBottom: 24 }}>
-            <label style={{
-              display: 'block', fontSize: 11, fontWeight: 700,
-              textTransform: 'uppercase', letterSpacing: '0.06em',
-              color: theme.colors.textMuted, marginBottom: 12,
-            }}>Skills</label>
+          <div style={{ marginBottom: 28, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 14 }}>Skills</h3>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {skills.map(s => {
-                const selected = selectedSkills.includes(s.id);
+              {skills.map(skill => {
+                const selected = selectedSkills.includes(skill.id);
                 return (
-                  <button key={s.id} type="button" onClick={() => handleSkillToggle(s.id)}
+                  <button
+                    key={skill.id} type="button" onClick={() => handleSkillToggle(skill.id)}
                     style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                      padding: '8px 16px', borderRadius: 20,
-                      border: `1.5px solid ${selected ? theme.colors.accent : theme.colors.border}`,
-                      background: selected ? `${theme.colors.accent}18` : 'transparent',
-                      color: selected ? theme.colors.accent : theme.colors.text,
-                      fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                      fontFamily: 'inherit', transition: 'all 0.2s',
-                    }}>
-                    {selected && <Check size={14} />}
-                    {s.skill_name}
+                      padding: '6px 14px', borderRadius: 'var(--radius-full)',
+                      border: selected ? 'none' : '1px solid var(--border)',
+                      background: selected ? 'var(--accent-soft)' : 'var(--bg-elevated)',
+                      color: selected ? 'var(--accent)' : 'var(--text-secondary)',
+                      fontSize: 12, fontWeight: selected ? 600 : 400, cursor: 'pointer',
+                      transition: 'var(--transition)',
+                      display: 'flex', alignItems: 'center', gap: 5,
+                    }}
+                  >
+                    {selected && <Check size={11} />}{skill.skill_name || skill.name}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Existing Images */}
-          {existingImages.length > 0 && (
-            <div style={{ marginBottom: 24 }}>
-              <label style={{
-                display: 'block', fontSize: 11, fontWeight: 700,
-                textTransform: 'uppercase', letterSpacing: '0.06em',
-                color: theme.colors.textMuted, marginBottom: 12,
-              }}>Current Profile Images</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 14 }}>Photos</h3>
+            {existingImages.length > 0 && (
+              <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
                 {existingImages.map((img, i) => (
-                  <img key={i}
-                    src={`${API_URL}${img.image_url}`}
-                    alt={`Employee ${i + 1}`}
-                    style={{ width: 72, height: 72, borderRadius: 12, objectFit: 'cover', border: `2px solid ${theme.colors.border}` }}
-                  />
+                  <img key={i} src={img} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* Upload New Images */}
-          <div style={{ marginBottom: 28 }}>
-            <label style={{
-              display: 'block', fontSize: 11, fontWeight: 700,
-              textTransform: 'uppercase', letterSpacing: '0.06em',
-              color: theme.colors.textMuted, marginBottom: 12,
-            }}>Upload New Images (max 5)</label>
-            <label style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              gap: 10, padding: 24, borderRadius: 12,
-              border: `2px dashed ${theme.colors.border}`,
-              cursor: 'pointer', color: theme.colors.textSecondary,
-              fontSize: 14, transition: 'border-color 0.2s',
-            }}>
-              <Upload size={20} />
-              Click to upload new images
+            )}
+            <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 90, borderRadius: 'var(--radius-lg)', border: '2px dashed var(--border)', cursor: 'pointer', gap: 6, background: 'var(--bg-elevated)', transition: 'var(--transition)' }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+            >
+              <Upload size={18} color="var(--text-muted)" />
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Upload new photos</span>
               <input type="file" multiple accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
             </label>
             {previews.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 16 }}>
-                {previews.map((src, i) => (
-                  <div key={i} style={{ position: 'relative' }}>
-                    <img src={src} alt={`Preview ${i + 1}`}
-                      style={{ width: 72, height: 72, borderRadius: 12, objectFit: 'cover', border: `2px solid ${theme.colors.border}` }}
-                    />
-                    <button type="button" onClick={() => removeNewImage(i)}
-                      style={{
-                        position: 'absolute', top: -6, right: -6,
-                        width: 22, height: 22, borderRadius: '50%',
-                        background: theme.colors.danger, border: 'none',
-                        color: '#fff', cursor: 'pointer', display: 'flex',
-                        alignItems: 'center', justifyContent: 'center',
-                      }}>
-                      <X size={12} />
+              <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+                {previews.map((p, i) => (
+                  <div key={i} style={{ position: 'relative', width: 66, height: 66 }}>
+                    <img src={p} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />
+                    <button type="button" onClick={() => removeNewImage(i)} style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: 'var(--danger)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <X size={10} color="#fff" />
                     </button>
                   </div>
                 ))}
@@ -245,16 +205,24 @@ function EditEmployee() {
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: 12 }}>
-            <Button variant="ghost" onClick={() => navigate('/employees')} fullWidth>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+            <button onClick={() => navigate('/employees')} style={{ padding: '10px 18px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'var(--transition)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-elevated)'}
+            >
               Cancel
-            </Button>
-            <Button type="submit" variant="primary" icon={Save} disabled={loading} fullWidth>
-              {loading ? 'Saving...' : 'Save Changes'}
-            </Button>
+            </button>
+            <button onClick={handleSubmit} disabled={loading} style={{ padding: '10px 20px', borderRadius: 'var(--radius-md)', border: 'none', background: loading ? 'var(--bg-elevated)' : 'var(--gradient)', color: loading ? 'var(--text-muted)' : '#fff', fontSize: 13, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 7, boxShadow: loading ? 'none' : 'var(--shadow-accent)', transition: 'var(--transition)' }}>
+              {loading ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin-slow 0.7s linear infinite', display: 'inline-block' }} />
+                  Saving...
+                </span>
+              ) : <><Save size={15} /> Save Changes</>}
+            </button>
           </div>
-        </form>
-      </GlassCard>
+        </div>
+      </div>
     </AppLayout>
   );
 }
