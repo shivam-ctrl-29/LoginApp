@@ -36,8 +36,8 @@ const sendWelcomeEmail = async ({ name, email, password }) => {
 
 // ─── Send Leave Status Email ──────────────────────────────────
 const sendLeaveStatusEmail = async ({ name, email, status, leaveType, startDate, endDate, comments }) => {
+  const statusColor = status === 'approved' ? 'green' : 'red';
   try {
-    const statusColor = status === 'approved' ? 'green' : 'red';
     await transporter.sendMail({
       from: `"HR Management" <${process.env.EMAIL_USER}>`,
       to: email,

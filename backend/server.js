@@ -63,6 +63,25 @@ app.use('/api/v1/audit',         auditRoutes);
 app.use('/api/v1/attendance',    attendanceRoutes);
 app.use('/api/v1/payroll',       payrollRoutes);
 
+// ─── Email Test ───────────────────────────────────────────────
+app.get('/api/v1/test-email', async (req, res) => {
+  const emailService = require('./src/utils/emailService');
+  try {
+    await emailService.sendLeaveStatusEmail({
+      name: 'Test User',
+      email: process.env.EMAIL_USER,
+      status: 'approved',
+      leaveType: 'Casual Leave',
+      startDate: new Date(),
+      endDate: new Date(),
+      comments: 'Test email from HRMS',
+    });
+    res.json({ success: true, sentTo: process.env.EMAIL_USER });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ─── Health Check ─────────────────────────────────────────────
 app.get('/api/v1/health', async (req, res) => {
   const { PrismaClient } = require('@prisma/client');
