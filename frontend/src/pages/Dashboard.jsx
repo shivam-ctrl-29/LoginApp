@@ -88,7 +88,7 @@ function Dashboard() {
         ]);
         setStats(empStats.data);
         setLeaveStats(lvStats.data);
-        setDeptData(deptStats.data.map(d => ({ name: d.department, value: d.employees })));
+        setDeptData(deptStats.data.filter(d => d.employees > 0).map(d => ({ name: d.department, value: d.employees })));
         const assets = assetRes.data?.assets || [];
         setAssetStats({
           total: assets.length,
@@ -198,7 +198,7 @@ function Dashboard() {
             </div>
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={deptData} barSize={28}>
-                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => v.length > 10 ? v.slice(0, 10) + '…' : v} />
                 <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(99,102,241,0.06)' }} />
                 <Bar dataKey="value" fill="url(#barGrad)" radius={[5, 5, 0, 0]} />
