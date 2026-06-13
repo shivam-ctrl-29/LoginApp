@@ -47,16 +47,20 @@ router.post('/forgot-password', async (req, res) => {
 
     const resetLink = `${FRONTEND_URL}/reset-password/${token}`;
 
-    await sendEmail(email, 'Password Reset Request', `
-      <h2>Password Reset</h2>
-      <p>Click the link below to reset your password.</p>
-      <p>This link expires in 15 minutes.</p>
-      <a href="${resetLink}" style="background:#2196F3;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;">
-        Reset Password
-      </a>
-    `);
-
+    // Respond immediately — don't make user wait for email
     res.json({ message: 'Reset link sent to your email!' });
+
+    // Send email in background
+    sendEmail(email, 'Password Reset Request', `
+      <div style="font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#0f0f1a;border-radius:12px;border:1px solid rgba(255,255,255,0.08);">
+        <h2 style="color:#f8fafc;font-size:22px;margin-bottom:8px;">Password Reset</h2>
+        <p style="color:#94a3b8;margin-bottom:24px;">Click the button below to reset your password. This link expires in <b style="color:#f8fafc;">15 minutes</b>.</p>
+        <a href="${resetLink}" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;padding:12px 28px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">
+          Reset Password
+        </a>
+        <p style="color:#475569;font-size:12px;margin-top:24px;">If you didn't request this, you can safely ignore this email.</p>
+      </div>
+    `).catch(err => console.error('[EMAIL] Forgot password email failed:', err.message));
 
   } catch (err) {
     console.error('FORGOT PASSWORD ERROR:', err.message);
