@@ -31,6 +31,7 @@ model User {
   assetHistory      AssetHistory[]
   attendances       Attendance[]
   payrollRecords    PayrollRecord[]
+  passwordResets    PasswordReset[]
 
   @@index([role])
   @@index([isVerified])
@@ -289,4 +290,14 @@ model SalarySlip {
   payrollRecord   PayrollRecord @relation(fields: [payrollRecordId], references: [id], onDelete: Cascade)
 
   @@index([payrollRecordId])
+}
+
+model PasswordReset {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
