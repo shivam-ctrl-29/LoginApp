@@ -69,14 +69,14 @@ app.get('/api/v1/test-email', async (req, res) => {
   try {
     await emailService.sendLeaveStatusEmail({
       name: 'Test User',
-      email: process.env.EMAIL_USER,
+      email: 'mathurshivv@gmail.com',
       status: 'approved',
       leaveType: 'Casual Leave',
       startDate: new Date(),
       endDate: new Date(),
       comments: 'Test email from HRMS',
     });
-    res.json({ success: true, sentTo: process.env.EMAIL_USER });
+    res.json({ success: true, sentTo: 'mathurshivv@gmail.com' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
